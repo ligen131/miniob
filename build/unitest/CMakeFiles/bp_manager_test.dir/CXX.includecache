@@ -1,0 +1,34 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../src/observer/rc.h
+
+../src/observer/storage/default/disk_buffer_pool.h
+fcntl.h
+-
+stdio.h
+-
+sys/types.h
+-
+string.h
+-
+sys/stat.h
+-
+time.h
+-
+vector
+-
+rc.h
+../src/observer/storage/default/rc.h
+
+/home/ligen/桌面/github/miniob/unitest/bp_manager_test.cpp
+storage/default/disk_buffer_pool.h
+/home/ligen/桌面/github/miniob/unitest/storage/default/disk_buffer_pool.h
+gtest/gtest.h
+/home/ligen/桌面/github/miniob/unitest/gtest/gtest.h
+

@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../deps/common/math/md5.h
+stdio.h
+-
+
+/home/ligen/桌面/github/miniob/unitest/md5_test.cpp
+stdio.h
+-
+common/math/md5.h
+/home/ligen/桌面/github/miniob/unitest/common/math/md5.h
+md5_test.h
+/home/ligen/桌面/github/miniob/unitest/md5_test.h
+
+/home/ligen/桌面/github/miniob/unitest/md5_test.h
+
