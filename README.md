@@ -5,14 +5,14 @@
 ## 代码提交方式
 
 1. 根据操作系统从官网下载`git`并安装: [https://git-scm.com/downloads](https://git-scm.com/downloads) 默认选项安装即可。
-2. 单击仓库右上角的`fork`按钮建立本仓库在本人账号下的分支。
-3. 通过`git clone https://github.com/ligen131/miniob.git`将本仓库克隆到本地。
-4. 修改完代码之后通过`git push origin master:dev`上传到`dev`分支，**请注意不要直接push到master分支**。
-5. 在github页面`pull request`拉取请求等待合并代码。
+2. 单击仓库右上角的`fork`按钮建立本仓库在本人账号下的分支，请特别注意**在你本人的账号下该仓库必须为Private状态**。
+3. 通过`git clone https://github.com/[Your_User_Name]/miniob.git`将本仓库克隆到本地。
+4. 修改完代码之后通过`git push origin master`上传到`dev`分支。
+5. 在github页面`pull request`拉取请求等待合并代码，**请注意不要申请合并到master分支，请申请合并到dev分支**。
 
 ## Log
 
-`Lastest Update: 2021-10-15 23:46`
+`Lastest Update: 2021-10-20 12:55`
 
 > v0.0.1 2021-10-15 23:46
 >
