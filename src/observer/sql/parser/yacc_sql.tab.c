@@ -2072,6 +2072,7 @@ extern void scan_string(const char *str, yyscan_t scanner);
 int sql_parse(const char *s, Query *sqls){
 	ParserContext context;
 	memset(&context, 0, sizeof(context));
+  // printf("s=\"%s\"\n",s);
 
 	yyscan_t scanner;
 	yylex_init_extra(&context, &scanner);
@@ -2079,5 +2080,6 @@ int sql_parse(const char *s, Query *sqls){
 	scan_string(s, scanner);
 	int result = yyparse(scanner);
 	yylex_destroy(scanner);
+  // printf("result=%d\n",result);
 	return result;
 }

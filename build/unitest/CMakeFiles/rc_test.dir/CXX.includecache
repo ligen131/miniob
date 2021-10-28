@@ -6,11 +6,3 @@
 
 #IncludeRegexTransform: 
 
-../src/observer/rc.h
-
-/home/ligen/桌面/github/miniob/unitest/rc_test.cpp
-rc.h
-/home/ligen/桌面/github/miniob/unitest/rc.h
-iostream
--
-

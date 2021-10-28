@@ -1,7 +1,5 @@
 # 2021 OceanBase 数据库大赛
 
-[TOC]
-
 该仓库由偏远小渔村传统弱校队维护，维护人员由 @ligen131 @Bunnycxk @QuartZ-Z 组成。
 
 ## 代码提交方式
@@ -15,8 +13,50 @@
 
 ## Log
 
-`Lastest Update: 2021-10-20 13:51`
+`Lastest Update: 2021-10-28 23:50`
 
+> v0.1.0 2021-10-28 23:50
+>
+> 完成Drop table case。用例测试如下：
+>
+> ```sql
+> help;
+> show tables;
+> create table t(id int,name char(255));
+> insert into t values(233,'aaa');
+> insert into t values(131,'bbb');
+> insert into t values(233,'ccc');
+> insert into t values(114,'aaa');
+> insert into t values(555,'ddd');
+> select * from t;
+> 
+> select num from t;
+> create index t_id on t(id);
+> create index t_name on t(name);
+> select * from t;
+> delete from t where name='aaa';
+> select * from t;
+> show tables;
+> drop table t;
+> show tables;
+> select * from t;
+> create table t(id int,num int,name char(255));
+> insert into t values(666,777,"eee");
+> create index t_id on t(id);
+> create index t_num on t(num);
+> select * from t;
+> drop table t;
+> exit;
+> ```
+>
+> *看工程代码真的好难qwq
+>
+> *drop table基本实现就是删除.table/.data/.index文件，index因为有多个所以要vector枚举，还要把Buffer Pool中的缓存清理干净（研究了好久qwq）。
+>
+> *Upload By ligen131
+>
+> *期望得分：20
+>
 > v0.0.2 2021-10-20 13:51
 >
 > 编译完成，上传依赖库文件。

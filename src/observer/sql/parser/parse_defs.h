@@ -64,7 +64,7 @@ typedef struct _Condition {
 typedef struct {
   size_t    attr_num;               // Length of attrs in Select clause
   RelAttr   attributes[MAX_NUM];    // attrs in Select clause
-  size_t    relation_num;           // Length of relations in Fro clause
+  size_t    relation_num;           // Length of relations in From clause
   char *    relations[MAX_NUM];     // relations in From clause
   size_t    condition_num;          // Length of conditions in Where clause
   Condition conditions[MAX_NUM];    // conditions in Where clause

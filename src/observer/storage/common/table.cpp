@@ -111,6 +111,61 @@ RC Table::create(const char *path, const char *name, const char *base_dir, int a
   return rc;
 }
 
+RC Table::drop(const char *path, const char *name, const char *base_dir){
+
+  if (nullptr == name || common::is_blank(name)) {
+    LOG_WARN("Name cannot be empty");
+    return RC::INVALID_ARGUMENT;
+  }
+  LOG_INFO("Begin to DROP table %s:%s", base_dir, name);
+
+  RC rc = RC::SUCCESS;
+
+  std::string index_file;
+  for(std::vector<Index *>::iterator iter=indexes_.begin();iter!=indexes_.end();++iter){
+    index_file=index_data_file(base_dir_.c_str(), name, (*iter)->index_meta().name());
+    remove(index_file.c_str());
+  }
+
+  std::string data_file = std::string(base_dir) + "/" + name + TABLE_DATA_SUFFIX;
+  int file_id=0;
+  
+  data_buffer_pool_ = theGlobalDiskBufferPool();
+  data_buffer_pool_->open_file(data_file.c_str(),&file_id);
+  // printf("%d\n",file_id);
+  rc = data_buffer_pool_->flush_all_pages(file_id);
+  data_buffer_pool_->close_file(file_id);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to flush table's data pages. table=%s, rc=%d:%s", name, rc, strrc(rc));
+    return rc;
+  }
+
+
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to delete disk buffer pool of data file. file name=%s", data_file.c_str());
+    return rc;
+  }
+
+  if (remove(path)==0){
+    LOG_INFO("Successfully delete the table file %s", path);
+  }else{
+    LOG_ERROR("Failed to delete the table file %s", path);
+    return RC::IOERR;
+  }
+
+  if (remove(data_file.c_str())==0){
+    LOG_INFO("Successfully delete the table DATA file %s", data_file.c_str());
+  }else{
+    LOG_ERROR("Failed to delete the table DATA file %s", data_file.c_str());
+    return RC::IOERR;
+  }
+
+
+  remove(data_file.c_str());
+
+  return RC::SUCCESS;
+}
+
 RC Table::open(const char *meta_file, const char *base_dir) {
   // 加载元数据文件
   std::fstream fs;

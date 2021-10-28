@@ -3,15 +3,15 @@
 
 # compile C with /usr/bin/cc
 # compile CXX with /usr/bin/c++
-C_FLAGS =  -Wall -DCMAKE_EXPORT_COMPILE_COMMANDS=1  -O2 -g   
+C_FLAGS =  -Wall -DCMAKE_EXPORT_COMPILE_COMMANDS=1  -O0 -g -DDEBUG   
 
-C_DEFINES = -DLINUX -DUNIX
+C_DEFINES = -DENABLE_DEBUG -DLINUX -DUNIX
 
 C_INCLUDES = -I/home/ligen/桌面/github/miniob/src/observer/. -I/home/ligen/桌面/github/miniob/src/observer -I/home/ligen/桌面/github/miniob/src/observer/../../deps 
 
-CXX_FLAGS =  -Wall -DCMAKE_EXPORT_COMPILE_COMMANDS=1  -O2 -g    -std=gnu++14
+CXX_FLAGS =  -Wall -DCMAKE_EXPORT_COMPILE_COMMANDS=1  -O0 -g -DDEBUG    -std=gnu++14
 
-CXX_DEFINES = -DLINUX -DUNIX
+CXX_DEFINES = -DENABLE_DEBUG -DLINUX -DUNIX
 
 CXX_INCLUDES = -I/home/ligen/桌面/github/miniob/src/observer/. -I/home/ligen/桌面/github/miniob/src/observer -I/home/ligen/桌面/github/miniob/src/observer/../../deps 
 

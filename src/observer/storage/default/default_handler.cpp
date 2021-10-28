@@ -83,7 +83,7 @@ RC DefaultHandler::create_db(const char *dbname) {
 }
 
 RC DefaultHandler::drop_db(const char *dbname) {
-  return RC::GENERIC_ERROR;
+  return RC::SUCCESS;
 }
 
 RC DefaultHandler::open_db(const char *dbname) {
@@ -128,7 +128,11 @@ RC DefaultHandler::create_table(const char *dbname, const char *relation_name, i
 }
 
 RC DefaultHandler::drop_table(const char *dbname, const char *relation_name) {
-  return RC::GENERIC_ERROR;
+  Db *db = find_db(dbname);
+  if (db == nullptr) {
+    return RC::SCHEMA_DB_NOT_OPENED;
+  }
+  return db->drop_table(relation_name);
 }
 
 RC DefaultHandler::create_index(Trx *trx, const char *dbname, const char *relation_name, const char *index_name, const char *attribute_name) {

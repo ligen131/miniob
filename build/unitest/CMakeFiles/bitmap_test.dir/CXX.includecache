@@ -6,15 +6,3 @@
 
 #IncludeRegexTransform: 
 
-../deps/common/lang/bitmap.h
-
-/home/ligen/桌面/github/miniob/unitest/bitmap_test.cpp
-string.h
--
-gtest/gtest.h
-/home/ligen/桌面/github/miniob/unitest/gtest/gtest.h
-common/lang/bitmap.h
-/home/ligen/桌面/github/miniob/unitest/common/lang/bitmap.h
-sstream
--
-
