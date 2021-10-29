@@ -15,9 +15,9 @@
 
 `Lastest Update: 2021-10-28 23:50`
 
-> v0.1.0 2021-10-28 23:50
+> v0.1.1 2021-10-29 14:49 && v0.1.0 2021-10-28 23:50
 >
-> 完成Drop table case。用例测试如下：
+> 完成drop-table && select-meta。用例测试如下：
 >
 > ```sql
 > help;
@@ -29,7 +29,12 @@
 > insert into t values(114,'aaa');
 > insert into t values(555,'ddd');
 > select * from t;
-> 
+> select not_exists_col from not_exists_table where not_exists_col2="aaa";
+> select not_exists_col from t where not_exists_col2="aaa";
+> select not_exists_col from t where name="aaa";
+> select id from t where name="aaa";
+> select id from not_exists_table;
+> select id from t where aaa="aaa";
 > select num from t;
 > create index t_id on t(id);
 > create index t_name on t(name);
@@ -48,6 +53,69 @@
 > drop table t;
 > exit;
 > ```
+>
+> 输出：
+>
+> ```
+> miniob > show tables;
+> desc `table name`;
+> create table `table name` (`column name` `column type`, ...);
+> drop table `table name`;
+> create index `index name` on `table` (`column`);
+> insert into `table` values(`value1`,`value2`);
+> update `table` set column=value [where `column`=`value`];
+> delete from `table` [where `column`=`value`];
+> select [ * | `columns` ] from `table`;
+> miniob > No table
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > id | name
+> 233 | aaa
+> 131 | bbb
+> 233 | ccc
+> 114 | aaa
+> 555 | ddd
+> miniob > FAILURE
+> miniob > FAILURE
+> miniob > FAILURE
+> miniob > id
+> 233
+> 114
+> miniob > FAILURE
+> miniob > FAILURE
+> miniob > FAILURE
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > id | name
+> 233 | aaa
+> 131 | bbb
+> 233 | ccc
+> 114 | aaa
+> 555 | ddd
+> miniob > SUCCESS
+> miniob > id | name
+> 131 | bbb
+> 233 | ccc
+> 555 | ddd
+> miniob > t
+> 
+> miniob > SUCCESS
+> miniob > No table
+> miniob > FAILURE
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > id | num | name
+> 666 | 777 | eee
+> miniob > SUCCESS
+> ```
+>
+> 10-29: 修改元数据未校验输出No data问题，现在会返回FAILURE。
 >
 > *看工程代码真的好难qwq
 >

@@ -1,5 +1,0 @@
-add_test( checkRotateTest.CheckRoateTest [==[/home/ligen/桌面/github/miniob/build/bin/log_test]==] [==[--gtest_filter=checkRotateTest.CheckRoateTest]==] --gtest_also_run_disabled_tests)
-set_tests_properties( checkRotateTest.CheckRoateTest PROPERTIES WORKING_DIRECTORY [==[/home/ligen/桌面/github/miniob/build/unitest]==])
-add_test( testEnableTest.CheckEnableTest [==[/home/ligen/桌面/github/miniob/build/bin/log_test]==] [==[--gtest_filter=testEnableTest.CheckEnableTest]==] --gtest_also_run_disabled_tests)
-set_tests_properties( testEnableTest.CheckEnableTest PROPERTIES WORKING_DIRECTORY [==[/home/ligen/桌面/github/miniob/build/unitest]==])
-set( log_test_TESTS checkRotateTest.CheckRoateTest testEnableTest.CheckEnableTest)

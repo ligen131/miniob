@@ -123,7 +123,11 @@ void ExecuteStage::handle_request(common::StageEvent *event) {
 
   switch (sql->flag) {
     case SCF_SELECT: { // select
-      do_select(current_db, sql, exe_event->sql_event()->session_event());
+      RC rc = do_select(current_db, sql, exe_event->sql_event()->session_event());
+      if(rc != RC::SUCCESS){
+        const char *response = "FAILURE\n";
+        session_event->set_response(response);
+      }
       exe_event->done_immediate();
     }
     break;
@@ -180,6 +184,7 @@ void ExecuteStage::handle_request(common::StageEvent *event) {
       const char *response = "show tables;\n"
           "desc `table name`;\n"
           "create table `table name` (`column name` `column type`, ...);\n"
+          "drop table `table name`;\n"
           "create index `index name` on `table` (`column`);\n"
           "insert into `table` values(`value1`,`value2`);\n"
           "update `table` set column=value [where `column`=`value`];\n"

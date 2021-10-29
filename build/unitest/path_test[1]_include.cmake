@@ -1,5 +1,0 @@
-if(EXISTS "/home/ligen/桌面/github/miniob/build/unitest/path_test[1]_tests.cmake")
-  include("/home/ligen/桌面/github/miniob/build/unitest/path_test[1]_tests.cmake")
-else()
-  add_test(path_test_NOT_BUILT path_test_NOT_BUILT)
-endif()
