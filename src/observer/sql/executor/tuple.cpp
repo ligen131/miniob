@@ -206,6 +206,11 @@ const std::vector<Tuple> &TupleSet::tuples() const {
   return tuples_;
 }
 
+inline int Min(int a,int b){
+  if(a<b) return a;
+  return b;
+}
+
 /////////////////////////////////////////////////////////////////////////////
 TupleRecordConverter::TupleRecordConverter(Table *table, TupleSet &tuple_set) :
       table_(table), tuple_set_(tuple_set){
@@ -230,7 +235,23 @@ void TupleRecordConverter::add_record(const char *record) {
       }
         break;
       case CHARS: {
-        const char *s = record + field_meta->offset();  // 现在当做Cstring来处理
+        char *s = (char*)(record + field_meta->offset());
+        char t[256] = {""};
+        // LOG_INFO("%s %d",s,strlen(s));
+        strncpy(t, s, Min(strlen(s), field_meta->len()));  // 现在当做Cstring来处理
+        // t[Min(strlen(s), field_meta->len())] = 0;
+        LOG_INFO("%s %d",s,strlen(s));
+        tuple.add(t, strlen(t));
+      }
+      break;
+      case DATES: {
+        int value = *(int*)(record + field_meta->offset());
+        std::string ans=std::to_string(value/10000) + "-" ;
+        if(value%10000/100<10)ans = ans + '0';
+        ans = ans + std::to_string(value%10000/100) + "-" ;
+        if(value%100<10)ans = ans + '0';
+        ans = ans + std::to_string(value%100);
+        const char *s = ans.c_str();  // 现在当做Cstring来处理
         tuple.add(s, strlen(s));
       }
       break;

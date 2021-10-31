@@ -134,7 +134,7 @@ RC Table::drop(const char *path, const char *name, const char *base_dir){
   data_buffer_pool_->open_file(data_file.c_str(),&file_id);
   // printf("%d\n",file_id);
   rc = data_buffer_pool_->flush_all_pages(file_id);
-  data_buffer_pool_->close_file(file_id);
+  data_buffer_pool_->close_file(file_id); //~Table();
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to flush table's data pages. table=%s, rc=%d:%s", name, rc, strrc(rc));
     return rc;
@@ -239,6 +239,15 @@ RC Table::rollback_insert(Trx *trx, const RID &rid) {
   return rc;
 }
 
+RC Insert_Date_Checker(Value values){
+  int dates=0;
+  if(values.type==DATES){
+    dates = *(int*)values.data;
+    if(dates==-1)return RC::INVALID_ARGUMENT;
+  }
+  return RC::SUCCESS;
+}
+
 RC Table::insert_record(Trx *trx, Record *record) {
   RC rc = RC::SUCCESS;
 
@@ -287,8 +296,17 @@ RC Table::insert_record(Trx *trx, int value_num, const Value *values) {
     return RC::INVALID_ARGUMENT;
   }
 
+  RC rc = RC::SUCCESS;
+  for(int i=0;i<value_num;++i){
+    rc = Insert_Date_Checker(values[i]);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Invalid argument. value num=%d, values=%p", value_num, values);
+      return RC::INVALID_ARGUMENT;
+    }
+  }
+
   char *record_data;
-  RC rc = make_record(value_num, values, record_data);
+  rc = make_record(value_num, values, record_data);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to create a record. rc=%d:%s", rc, strrc(rc));
     return rc;

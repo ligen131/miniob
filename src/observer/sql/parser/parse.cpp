@@ -40,6 +40,7 @@ void relation_attr_destroy(RelAttr *relation_attr) {
 
 void value_init_integer(Value *value, int v) {
   value->type = INTS;
+  // printf("INTEGER %d %d\n",value->type,v);
   value->data = malloc(sizeof(v));
   memcpy(value->data, &v, sizeof(v));
 }
@@ -50,7 +51,48 @@ void value_init_float(Value *value, float v) {
 }
 void value_init_string(Value *value, const char *v) {
   value->type = CHARS;
+  // printf("STRING %d %s %d\n",value->type,v,strlen(v));
   value->data = strdup(v);
+}
+#define DATE_CHECK_FAILURE ans=-1; \
+      value->data = malloc(sizeof(ans)); \
+      memcpy(value->data, &ans, sizeof(ans)); \
+      return
+void value_init_date(Value *value, const char *v) {
+  value->type = DATES;
+  // printf("DATE %d \"%s\"\n",value->type,v);
+  int ans=0,l=strlen(v),y=0,m=0,d=0,nn=1,x;
+  for(int i=0;i<l;++i){
+    if(v[i]=='-'){
+      ++nn;
+      if(nn>3){DATE_CHECK_FAILURE;}
+    }else if(v[i]>='0'&&v[i]<='9'){
+      x=v[i]-'0';
+      if(nn==1){
+        y=y*10+x;
+        if(y>2038){DATE_CHECK_FAILURE;}
+      }else if(nn==2){
+        m=m*10+x;
+        if(m>12){DATE_CHECK_FAILURE;}
+      }else{
+        d=d*10+x;
+        if(d>31){DATE_CHECK_FAILURE;}
+      }
+      // printf("DATE %d %d %d %d %d %d\n",i,nn,x,y,m,d);
+    }else{DATE_CHECK_FAILURE;}
+  }
+  if(y<1970){DATE_CHECK_FAILURE;}
+  if(m<=0){DATE_CHECK_FAILURE;}
+  if(d<=0){DATE_CHECK_FAILURE;}
+  if(y%4==0&&m==2&&d>29){DATE_CHECK_FAILURE;}
+  if(y%4!=0&&m==2&&d>28){DATE_CHECK_FAILURE;}
+  if((m==1||m==3||m==5||m==7||m==8||m==10||m==12)&&d>31){DATE_CHECK_FAILURE;}
+  if((m==4||m==6||m==9||m==11)&&d>30){DATE_CHECK_FAILURE;}
+  if(y==2038&&m>2){DATE_CHECK_FAILURE;}
+  ans=y*10000+m*100+d;
+  // printf("DATE %d %d\n",value->type,ans);
+  value->data = malloc(sizeof(ans));
+  memcpy(value->data, &ans, sizeof(ans));
 }
 void value_destroy(Value *value) {
   value->type = UNDEFINED;

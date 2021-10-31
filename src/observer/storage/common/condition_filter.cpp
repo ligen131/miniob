@@ -40,7 +40,7 @@ DefaultConditionFilter::~DefaultConditionFilter()
 
 RC DefaultConditionFilter::init(const ConDesc &left, const ConDesc &right, AttrType attr_type, CompOp comp_op)
 {
-  if (attr_type < CHARS || attr_type > FLOATS) {
+  if (attr_type < CHARS || attr_type > DATES) {
     LOG_ERROR("Invalid condition with unsupported attribute type: %d", attr_type);
     return RC::INVALID_ARGUMENT;
   }
@@ -57,11 +57,23 @@ RC DefaultConditionFilter::init(const ConDesc &left, const ConDesc &right, AttrT
   return RC::SUCCESS;
 }
 
+RC Select_Date_Checker(Value values){
+  int dates=0;
+  if(values.type==DATES){
+    dates = *(int*)values.data;
+    if(dates==-1)return RC::INVALID_ARGUMENT;
+  }
+  return RC::SUCCESS;
+}
+
+
 RC DefaultConditionFilter::init(Table &table, const Condition &condition)
 {
   const TableMeta &table_meta = table.table_meta();
   ConDesc left;
   ConDesc right;
+
+  RC rc = RC::SUCCESS;
 
   AttrType type_left = UNDEFINED;
   AttrType type_right = UNDEFINED;
@@ -80,6 +92,12 @@ RC DefaultConditionFilter::init(Table &table, const Condition &condition)
 
     type_left = field_left->type();
   } else {
+    rc = Select_Date_Checker(condition.left_value);
+    if(rc != RC::SUCCESS){
+      LOG_WARN("Date invalid. %s.", table.name());
+      return rc;
+    }
+
     left.is_attr = false;
     left.value = condition.left_value.data;  // 校验type 或者转换类型
     type_left = condition.left_value.type;
@@ -101,6 +119,12 @@ RC DefaultConditionFilter::init(Table &table, const Condition &condition)
 
     right.value = nullptr;
   } else {
+    rc = Select_Date_Checker(condition.right_value);
+    if(rc != RC::SUCCESS){
+      LOG_WARN("Date invalid. %s.", table.name());
+      return rc;
+    }
+
     right.is_attr = false;
     right.value = condition.right_value.data;
     type_right = condition.right_value.type;
@@ -127,15 +151,18 @@ bool DefaultConditionFilter::filter(const Record &rec) const
 {
   char *left_value = nullptr;
   char *right_value = nullptr;
+  char s[256] = {""};
 
   if (left_.is_attr) {  // value
-    left_value = (char *)(rec.data + left_.attr_offset);
+    strncpy(s, (char *)(rec.data + left_.attr_offset), left_.attr_length);
+    left_value = s;
   } else {
     left_value = (char *)left_.value;
   }
 
   if (right_.is_attr) {
-    right_value = (char *)(rec.data + right_.attr_offset);
+    strncpy(s, (char *)(rec.data + right_.attr_offset), right_.attr_length);
+    right_value = s;
   } else {
     right_value = (char *)right_.value;
   }
@@ -158,6 +185,11 @@ bool DefaultConditionFilter::filter(const Record &rec) const
       float right = *(float *)right_value;
       cmp_result = (int)(left - right);
     } break;
+    case DATES: {
+      int left = *(int *)left_value;
+      int right = *(int *)right_value;
+      cmp_result = left - right;
+    }break;
     default: {
     }
   }
