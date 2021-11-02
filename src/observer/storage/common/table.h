@@ -25,6 +25,7 @@ struct Record;
 struct RID;
 class Index;
 class IndexScanner;
+class RecordUpdater;
 class RecordDeleter;
 class Trx;
 
@@ -68,8 +69,10 @@ public:
 
 public:
   RC commit_insert(Trx *trx, const RID &rid);
+  RC commit_update(Trx *trx, const RID &rid);
   RC commit_delete(Trx *trx, const RID &rid);
   RC rollback_insert(Trx *trx, const RID &rid);
+  RC rollback_update(Trx *trx, const RID &rid);
   RC rollback_delete(Trx *trx, const RID &rid);
 
 private:
@@ -79,6 +82,7 @@ private:
   IndexScanner *find_index_for_scan(const DefaultConditionFilter &filter);
 
   RC insert_record(Trx *trx, Record *record);
+  RC update_record(Trx *trx, Record *record, const FieldMeta *field_meta, const Value *value);
   RC delete_record(Trx *trx, Record *record);
 
 private:

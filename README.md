@@ -13,8 +13,97 @@
 
 ## Log
 
-`Lastest Update: 2021-10-31 22:06`
+`Lastest Update: 2021-11-02 18:53`
 
+> v0.3.0 2021-11-02 18:53
+>
+> 艰难地完成了Update。用例测试如下：
+>
+> ```sql
+> create table t(id int,name char,da date);
+> create index da_t on t(da);
+> insert into t values(1,'ligen','2021-10-30');
+> insert into t values(11,'ligen','2021-10-31');
+> insert into t values(2,'aset','2000-2-29');
+> insert into t values(4,'deft','1976-2-29');
+> insert into t values(5,'ghit','2035-1-1');
+> insert into t values(6,'jklt','2021-6-30');
+> insert into t values(233,'nowt','2021-10-31');
+> select * from t;    
+> update t set name='aaa' where da='2021-10-31';
+> select * from t;
+> update t set name='bbb' where da='2021-10-32';
+> select * from t;
+> update t set name='ccc' where id=9;
+> select * from t;
+> update t set name="OK" where da>='1976-2-29';
+> select * from t;
+> exit;
+> ```
+>
+> 输出：
+>
+> ```
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > id | name | da
+> 1 | lige | 2021-10-30
+> 11 | lige | 2021-10-31
+> 2 | aset | 2000-02-29
+> 4 | deft | 1976-02-29
+> 5 | ghit | 2035-01-01
+> 6 | jklt | 2021-06-30
+> 233 | nowt | 2021-10-31
+> miniob > SUCCESS
+> miniob > id | name | da
+> 1 | lige | 2021-10-30
+> 11 | aaa | 2021-10-31
+> 2 | aset | 2000-02-29
+> 4 | deft | 1976-02-29
+> 5 | ghit | 2035-01-01
+> 6 | jklt | 2021-06-30
+> 233 | aaa | 2021-10-31
+> miniob > FAILURE
+> miniob > id | name | da
+> 1 | lige | 2021-10-30
+> 11 | aaa | 2021-10-31
+> 2 | aset | 2000-02-29
+> 4 | deft | 1976-02-29
+> 5 | ghit | 2035-01-01
+> 6 | jklt | 2021-06-30
+> 233 | aaa | 2021-10-31
+> miniob > SUCCESS
+> miniob > id | name | da
+> 1 | lige | 2021-10-30
+> 11 | aaa | 2021-10-31
+> 2 | aset | 2000-02-29
+> 4 | deft | 1976-02-29
+> 5 | ghit | 2035-01-01
+> 6 | jklt | 2021-06-30
+> 233 | aaa | 2021-10-31
+> miniob > SUCCESS
+> miniob > id | name | da
+> 1 | OK | 2021-10-30
+> 11 | OK | 2021-10-31
+> 2 | OK | 2000-02-29
+> 4 | OK | 1976-02-29
+> 5 | OK | 2035-01-01
+> 6 | OK | 2021-06-30
+> ```
+>
+> *看了两天，仿照了`Insert/delete/select`的写法，一开始看的真的晕，寻求大佬帮助之后有点思路，希望能过吧qwq。
+>
+> *期望得分：50
+>
+> *如果能过目前就能进前50了。
+>
 > v0.2.0 2021-10-31 22:06
 >
 > 完成date。顺便修复了一下原代码中两个char类型相接select和where时会出错的情况（如果未来有错误请到`tuple.cpp`的`add_record`中的`case CHARS`和`condition_filter.cpp`的`filter`函数中修改，具体是用到`strncpy`函数那几行）。用例测试如下：

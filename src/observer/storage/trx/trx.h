@@ -87,12 +87,14 @@ public:
 
 public:
   RC insert_record(Table *table, Record *record);
+  RC update_record(Table *table, Record *record);
   RC delete_record(Table *table, Record *record);
 
   RC commit();
   RC rollback();
 
   RC commit_insert(Table *table, Record &record);
+  RC commit_update(Table *table, Record &record);
   RC rollback_delete(Table *table, Record &record);
 
   bool is_visible(Table *table, const Record *record);
@@ -108,6 +110,7 @@ private:
 
   Operation *find_operation(Table *table, const RID &rid);
   void insert_operation(Table *table, Operation::Type type, const RID &rid);
+  void update_operation(Table *table, Operation::Type type, const RID &rid);
   void delete_operation(Table *table, const RID &rid);
 
 private:
