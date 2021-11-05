@@ -296,10 +296,17 @@ RC do_multi_tables_select_DFS(size_t now, TupleSet &multi_tables_tuple_set) {
     LOG_INFO("Find one acceptable answer.");
     Tuple tuple;
     for (size_t i = 0; i < total_table; ++i) {
-      size_t sz = tuple_sets_[i].tuples()[DFS_tree[i]].values().size();
-      for (size_t j = 0; j < sz; ++j) {
-        if(tuple_filter[i][j]) tuple.add(tuple_sets_[i].tuples()[DFS_tree[i]].values()[j]);
-      }
+      // std::vector<std::shared_ptr<TupleValue>> value_;
+      // value_.emplace_back(tuple_sets_[i].tuples()[DFS_tree[i]].values());
+      // size_t sz = value_.size();
+      // for (size_t j = 0; j < sz; ++j) {
+      //   if(tuple_filter[i][j]) tuple.add(value_[j]);
+      // }
+      int j = 0;
+      for (std::vector<std::shared_ptr<TupleValue>>::const_iterator iter = tuple_sets_[i].tuples()[DFS_tree[i]].values().begin();
+            iter != tuple_sets_[i].tuples()[DFS_tree[i]].values().end(); ++iter, ++j) {
+              if(tuple_filter[i][j]) tuple.add((*iter));
+            }
     }
     multi_tables_tuple_set.add(std::move(tuple));
     return RC::SUCCESS;
@@ -389,7 +396,7 @@ RC multi_tables_select_init(Trx *trx, Session *session, const Selects &selects, 
       } else {
         // 列出这张表相关字段
         rc = schema_add_field(table, attr.attribute_name, schema);
-        tuple_filter[num - 1][table->real_table_meta().get_index_by_field(attr.attribute_name) - 1];
+        tuple_filter[num - 1][table->real_table_meta().get_index_by_field(attr.attribute_name) - 1] = 1;
         if (rc != RC::SUCCESS) {
           return rc;
         }
