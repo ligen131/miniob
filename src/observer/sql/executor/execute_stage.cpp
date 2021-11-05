@@ -348,7 +348,7 @@ RC multi_tables_select_init(Trx *trx, Session *session, const Selects &selects, 
   // 取出所有table
   TupleSchema schema;
   total_table = 0;
-  for (size_t i = 0;i < selects.relation_num; ++i){
+  for (int i = selects.relation_num - 1;i >= 0 ; --i){
     const char *table_name = selects.relations[i];
     Table * table = DefaultHandler::get_default().find_table(db, table_name);
     if (nullptr == table) {
