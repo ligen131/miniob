@@ -13,8 +13,88 @@
 
 ## Log
 
-`Lastest Update: 2021-11-02 18:53`
+`Lastest Update: 2021-11-05 16:21`
 
+> v0.4.0 2021-11-05 16:21
+>
+> 妈的，经历了改了许多写法，终于他妈的完成了select-tables。用例测试如下：
+>
+> ```sql
+> create table t(id int,name char(4),da date);
+> insert into t values(1,'lige','2021-10-30');
+> insert into t values(11,'lige','2021-10-31');
+> insert into t values(2,'aset','2000-2-29');
+> insert into t values(4,'deft','1976-2-29');
+> insert into t values(5,'ghit','2035-1-1');
+> insert into t values(6,'jklt','2021-6-30');
+> insert into t values(233,'nowt','2021-10-31');
+> create table s(id int,name char(4),da date);
+> insert into s values(7,'lige','2021-10-30');
+> insert into s values(8,'lige','2021-10-31');
+> insert into s values(9,'aset','2000-2-29');
+> insert into s values(10,'deft','1976-2-29');
+> insert into s values(11,'ghit','2035-1-1');
+> insert into s values(12,'jklt','2021-6-30');
+> insert into s values(233,'nowt','2021-10-31');
+> select * from s,t where s.name=t.name;
+> select s.name,t.id,t.name from s,t where s.id=t.id;
+> select * from s,t where s.id=t.id and s.da>'2021-10-30' and t.da<'2021-10-31' and t.id>1;
+> select * from s,t where s.id=t.id;
+> select * from s,t where s.id=t.id and t.da>'2021-10-30';
+> drop table t;
+> drop table s;
+> exit;
+> ```
+>
+> 输出：
+>
+> ```sql
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > s.id | s.name | s.da | t.id | t.name | t.da
+> 7 | lige | 2021-10-30 | 1 | lige | 2021-10-30
+> 7 | lige | 2021-10-30 | 11 | lige | 2021-10-31
+> 8 | lige | 2021-10-31 | 1 | lige | 2021-10-30
+> 8 | lige | 2021-10-31 | 11 | lige | 2021-10-31
+> 9 | aset | 2000-02-29 | 2 | aset | 2000-02-29
+> 10 | deft | 1976-02-29 | 4 | deft | 1976-02-29
+> 11 | ghit | 2035-01-01 | 5 | ghit | 2035-01-01
+> 12 | jklt | 2021-06-30 | 6 | jklt | 2021-06-30
+> 233 | nowt | 2021-10-31 | 233 | nowt | 2021-10-31
+> miniob > s.name | t.id | t.name
+> ghit | 11 | lige
+> nowt | 233 | nowt
+> miniob > s.id | s.name | s.da | t.id | t.name | t.da
+> miniob > s.id | s.name | s.da | t.id | t.name | t.da
+> 11 | ghit | 2035-01-01 | 11 | lige | 2021-10-31
+> 233 | nowt | 2021-10-31 | 233 | nowt | 2021-10-31
+> miniob > s.id | s.name | s.da | t.id | t.name | t.da
+> 11 | ghit | 2035-01-01 | 11 | lige | 2021-10-31
+> 233 | nowt | 2021-10-31 | 233 | nowt | 2021-10-31
+> miniob > SUCCESS
+> miniob > SUCCESS
+> ```
+>
+> *距离上次提交已经三天，这题真的很难受qwq。经历了莫名其妙的各种段错误qwq，最终发现是自己写错了。问了各路大神，改了几种写法，还被一个大一队超了qwq。行吧，能过就行qwq。
+>
+> *期望得分：60 。
+>
+> *cxk也逐渐步入正轨，希望能挺进初赛吧。前面竞争已经很激烈了。
+>
 > v0.3.0 2021-11-02 18:53
 >
 > 艰难地完成了Update。用例测试如下：

@@ -293,7 +293,7 @@ bool multi_tables_filter(int cmp_result,CompOp comp_op_) {
 RC do_multi_tables_select_DFS(size_t now, TupleSet &multi_tables_tuple_set) {
   LOG_INFO("DFS in %d.", now);
   if (now == total_table){
-    LOG_INFO("Find one acceptable answer.");
+    LOG_INFO("Find one acceptable answer. %d %d",DFS_tree[0], DFS_tree[1]);
     Tuple tuple;
     for (size_t i = 0; i < total_table; ++i) {
       // std::vector<std::shared_ptr<TupleValue>> value_;
@@ -317,10 +317,10 @@ RC do_multi_tables_select_DFS(size_t now, TupleSet &multi_tables_tuple_set) {
     int i = 0, num, f, t;
     bool ok_ = 1;
     for (std::vector<Table *>::iterator it = Table_To_Table[now].begin(); it != Table_To_Table[now].end(); ++it, ++i) {
-      num = Table_Map[(*it)];
+      num = Table_Map[(*it)] - 1;
       f = Field_To_Field_from[now][i];
       t = Field_To_Field_targ[now][i];
-      LOG_INFO("num = %d, f = %d, t = %d %d %d.",num,f,t,tuple_sets_[num].tuples()[DFS_tree[num]].values()[f].get()->compare(*((*iter).values()[t].get())),Multi_tables_compop_[now][i]);
+      // LOG_INFO("num = %d, f = %d, t = %d %d %d %d.",num,DFS_tree[num],f,t,tuple_sets_[num].tuples()[DFS_tree[num]].values()[f].get()->compare(*((*iter).values()[t].get())),Multi_tables_compop_[now][i]);
       if (!multi_tables_filter(tuple_sets_[num].tuples()[DFS_tree[num]].values()[f].get()->compare(*((*iter).values()[t].get())), Multi_tables_compop_[now][i])){
         ok_ = 0;
         break;
@@ -349,8 +349,9 @@ RC multi_tables_select_init(Trx *trx, Session *session, const Selects &selects, 
   Table_Map.clear();
   // TupleSet ts;
   // multi_tables_tuple_set = std::move(ts); // 注意：不可用！会段错误
+  multi_tables_tuple_set.clear();
   memset(tuple_filter, 0, sizeof(tuple_filter));
-  memset(&multi_tables_tuple_set, 0, sizeof(multi_tables_tuple_set));
+  // memset(&multi_tables_tuple_set, 0, sizeof(multi_tables_tuple_set));
   
   // 取出所有table
   TupleSchema schema;

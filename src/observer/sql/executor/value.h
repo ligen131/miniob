@@ -19,6 +19,7 @@ See the Mulan PSL v2 for more details. */
 
 #include <string>
 #include <ostream>
+#include "common/log/log.h"
 
 class TupleValue {
 public:
@@ -103,6 +104,7 @@ public:
     if(d1 && d2){
       return d1 - d2;
     }
+    LOG_INFO("Compare %s %s",value_.c_str(), string_other.value_.c_str());
     return strcmp(value_.c_str(), string_other.value_.c_str());
   }
 private:
