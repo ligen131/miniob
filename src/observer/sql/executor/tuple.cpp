@@ -128,7 +128,7 @@ void TupleSchema::print(std::ostream &os, bool is_multi_tables) const {
     os << iter->field_name() << " | ";
   }
 
-  if (table_names.size() > 1) {
+  if (is_multi_tables) {
     os << fields_.back().table_name() << ".";
   }
   os << fields_.back().field_name() << std::endl;

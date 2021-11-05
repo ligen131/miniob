@@ -13,9 +13,9 @@
 
 ## Log
 
-`Lastest Update: 2021-11-05 16:21`
+`Lastest Update: 2021-11-05 16:52`
 
-> v0.4.0 2021-11-05 16:21
+> v0.4.0-v4.0.1 2021-11-05 16:21-16:52
 >
 > 妈的，经历了改了许多写法，终于他妈的完成了select-tables。用例测试如下：
 >
@@ -36,6 +36,7 @@
 > insert into s values(11,'ghit','2035-1-1');
 > insert into s values(12,'jklt','2021-6-30');
 > insert into s values(233,'nowt','2021-10-31');
+> select s.name from s,t where s.name=t.name;
 > select * from s,t where s.name=t.name;
 > select s.name,t.id,t.name from s,t where s.id=t.id;
 > select * from s,t where s.id=t.id and s.da>'2021-10-30' and t.da<'2021-10-31' and t.id>1;
@@ -65,6 +66,16 @@
 > miniob > SUCCESS
 > miniob > SUCCESS
 > miniob > SUCCESS
+> miniob > s.name
+> lige
+> lige
+> lige
+> lige
+> aset
+> deft
+> ghit
+> jklt
+> nowt
 > miniob > s.id | s.name | s.da | t.id | t.name | t.da
 > 7 | lige | 2021-10-30 | 1 | lige | 2021-10-30
 > 7 | lige | 2021-10-30 | 11 | lige | 2021-10-31
