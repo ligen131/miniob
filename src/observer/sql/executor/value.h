@@ -83,8 +83,26 @@ public:
     os << value_;
   }
 
+  int Check_is_it_date() const {
+    const char *s = value_.c_str();
+    size_t len = strlen(s);
+    int ans = 0;
+    if(len != 10) return 0;
+    for (size_t i = 0; i < len; ++i){
+      if(i == 5 || i == 8){
+        if(s[i] != '-')return 0;
+      } else if(s[i] < '0' || s[i] > '9') return 0;
+      else ans = ans * 10 + s[i] - '0';
+    }
+    return ans;
+  }
+
   int compare(const TupleValue &other) const override {
     const StringValue &string_other = (const StringValue &)other;
+    int d1 = Check_is_it_date(), d2 = string_other.Check_is_it_date();
+    if(d1 && d2){
+      return d1 - d2;
+    }
     return strcmp(value_.c_str(), string_other.value_.c_str());
   }
 private:

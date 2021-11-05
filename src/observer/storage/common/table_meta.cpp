@@ -112,6 +112,18 @@ const FieldMeta * TableMeta::trx_field() const {
 const FieldMeta * TableMeta::field(int index) const {
   return &fields_[index];
 }
+int TableMeta::get_index_by_field(const char *name) {
+  if (nullptr == name) {
+    return -1;
+  }
+  int index = 0;
+  for (std::vector<FieldMeta>::iterator it = fields_.begin(); it != fields_.end(); ++it, ++index) {
+    if (0 == strcmp((*it).name(), name)) {
+      return index;
+    }
+  }
+  return -1;
+}
 const FieldMeta * TableMeta::field(const char *name) const {
   if (nullptr == name) {
     return nullptr;

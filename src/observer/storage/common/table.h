@@ -64,6 +64,7 @@ public:
   const char *name() const;
 
   const TableMeta &table_meta() const;
+  TableMeta real_table_meta();
 
   RC sync();
 

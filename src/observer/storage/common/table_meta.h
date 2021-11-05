@@ -40,6 +40,7 @@ public:
   const char * name() const;
   const FieldMeta * trx_field() const;
   const FieldMeta * field(int index) const;
+  int get_index_by_field(const char *name) ;
   const FieldMeta * field(const char *name) const;
   const FieldMeta * find_field_by_offset(int offset) const;
   int field_num() const;

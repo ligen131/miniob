@@ -356,6 +356,9 @@ const char *Table::name() const {
 const TableMeta &Table::table_meta() const {
   return table_meta_;
 }
+TableMeta Table::real_table_meta() {
+  return table_meta_;
+}
 
 RC Table::make_record(int value_num, const Value *values, char * &record_out) {
   // 检查字段类型是否一致

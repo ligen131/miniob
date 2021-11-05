@@ -41,8 +41,8 @@ public:
 private:
   Trx *trx_ = nullptr;
   Table  * table_;
-  TupleSchema  tuple_schema_;
-  std::vector<DefaultConditionFilter *> condition_filters_;
+  TupleSchema  tuple_schema_; //table && field
+  std::vector<DefaultConditionFilter *> condition_filters_; //condition
 };
 
 #endif //__OBSERVER_SQL_EXECUTOR_EXECUTION_NODE_H_

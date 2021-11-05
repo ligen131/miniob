@@ -189,7 +189,7 @@ void ExecuteStage::handle_request(common::StageEvent *event) {
           "insert into `table` values(`value1`,`value2`);\n"
           "update `table` set column=value [where `column`=`value`];\n"
           "delete from `table` [where `column`=`value`];\n"
-          "select [ * | `columns` ] from `table`;\n";
+          "select [ * | `columns` ] from `table` [where `column`=`value`];\n";
       session_event->set_response(response);
       exe_event->done_immediate();
     }
@@ -218,6 +218,252 @@ void end_trx_if_need(Session *session, Trx *trx, bool all_right) {
   }
 }
 
+/*
+RC do_multi_tables_select_DFS(Trx *trx, Session *session, const Selects selects, const char *db, int now) {
+  RC rc = RC::SUCCESS;
+  if(now > total_table) {
+    // Multi print
+    return RC::SUCCESS;
+  }
+
+  std::vector<SelectExeNode *> select_nodes;
+  const char *table_name = Multi_tables_list[now]->name();
+  SelectExeNode *select_node = new SelectExeNode;
+  rc = create_selection_executor(trx, selects, db, table_name, *select_node);
+  if (rc != RC::SUCCESS) {
+    delete select_node;
+    for (SelectExeNode *& tmp_node: select_nodes) {
+      delete tmp_node;
+    }
+    end_trx_if_need(session, trx, false);
+    return rc;
+  }
+  select_nodes.push_back(select_node);
+  delete select_node;
+
+  int num2, i = 0;
+  for(std::vector<Table *>::iterator iter = Table_To_Table[now].begin(); iter != Table_To_Table[now].end(); iter++, ++i){
+    num2 = Table_Map[(*iter)];
+
+  }
+}
+*/
+
+// Table *Multi_tables_list[MAX_NUM + 1];
+std::vector<Table *>Table_To_Table[MAX_NUM];
+// std::vector<Table *>Empty_Table;
+std::vector<size_t>Field_To_Field_from[MAX_NUM];
+std::vector<size_t>Field_To_Field_targ[MAX_NUM];
+// std::vector<size_t>Empty_FieldMeta;
+std::unordered_map<Table *,size_t>Table_Map;
+// std::unordered_map<Table *,size_t>Empty_Table_Map;
+std::vector<TupleSet> tuple_sets_;
+// TupleSet multi_tables_tuple_set;
+// std::vector<TupleSet> Empty_tuple_set;
+std::vector<CompOp> Multi_tables_compop_[MAX_NUM];
+// std::vector<CompOp> Empty_compop;
+size_t total_table;
+bool tuple_filter[MAX_NUM][MAX_NUM];
+int DFS_tree[MAX_NUM];
+TupleSet multi_tables_tuple_set;
+bool multi_tables_filter(int cmp_result,CompOp comp_op_) {
+  switch (comp_op_) {
+    case EQUAL_TO:
+      return 0 == cmp_result;
+    case LESS_EQUAL:
+      return cmp_result <= 0;
+    case NOT_EQUAL:
+      return cmp_result != 0;
+    case LESS_THAN:
+      return cmp_result < 0;
+    case GREAT_EQUAL:
+      return cmp_result >= 0;
+    case GREAT_THAN:
+      return cmp_result > 0;
+
+    default:
+      break;
+  }
+
+  LOG_PANIC("Never should print this.");
+  return cmp_result;  // should not go here
+}
+
+// Tuple do_multi_tables_select_DFS_tuple;
+RC do_multi_tables_select_DFS(size_t now, TupleSet &multi_tables_tuple_set) {
+  LOG_INFO("DFS in %d.", now);
+  if (now == total_table){
+    LOG_INFO("Find one acceptable answer.");
+    Tuple tuple;
+    for (size_t i = 0; i < total_table; ++i) {
+      size_t sz = tuple_sets_[i].tuples()[DFS_tree[i]].values().size();
+      for (size_t j = 0; j < sz; ++j) {
+        if(tuple_filter[i][j]) tuple.add(tuple_sets_[i].tuples()[DFS_tree[i]].values()[j]);
+      }
+    }
+    multi_tables_tuple_set.add(std::move(tuple));
+    return RC::SUCCESS;
+  }
+  
+  int now_tuple_index = 0;
+  for (std::vector<Tuple>::const_iterator iter = tuple_sets_[now].tuples().begin(); iter != tuple_sets_[now].tuples().end(); ++iter, ++now_tuple_index) {
+    int i = 0, num, f, t;
+    bool ok_ = 1;
+    for (std::vector<Table *>::iterator it = Table_To_Table[now].begin(); it != Table_To_Table[now].end(); ++it, ++i) {
+      num = Table_Map[(*it)];
+      f = Field_To_Field_from[now][i];
+      t = Field_To_Field_targ[now][i];
+      LOG_INFO("num = %d, f = %d, t = %d %d %d.",num,f,t,tuple_sets_[num].tuples()[DFS_tree[num]].values()[f].get()->compare(*((*iter).values()[t].get())),Multi_tables_compop_[now][i]);
+      if (!multi_tables_filter(tuple_sets_[num].tuples()[DFS_tree[num]].values()[f].get()->compare(*((*iter).values()[t].get())), Multi_tables_compop_[now][i])){
+        ok_ = 0;
+        break;
+      }
+    }
+    if (ok_) {
+      DFS_tree[now] = now_tuple_index;
+      // for (size_t k = 0; k < (*iter).values().size(); ++k) {
+      //   if(tuple_filter[now][k]) do_multi_tables_select_DFS_tuple.add((*iter).values()[k]);
+      // }
+      do_multi_tables_select_DFS(now + 1, multi_tables_tuple_set);
+      // for (size_t k = 0; k < (*iter).values().size(); ++k) {
+      //   if(tuple_filter[now][k]) do_multi_tables_select_DFS_tuple.pop_back_();
+      // }
+    }
+  }
+  return RC::SUCCESS;
+}
+
+static RC schema_add_field(Table *table, const char *field_name, TupleSchema &schema) ;
+
+RC multi_tables_select_init(Trx *trx, Session *session, const Selects &selects, const char *db, TupleSet &multi_tables_tuple_set) {
+  LOG_INFO("Start to init multi tables.");
+  RC rc = RC::SUCCESS;
+
+  Table_Map.clear();
+  // TupleSet ts;
+  // multi_tables_tuple_set = std::move(ts); // 注意：不可用！会段错误
+  memset(tuple_filter, 0, sizeof(tuple_filter));
+  memset(&multi_tables_tuple_set, 0, sizeof(multi_tables_tuple_set));
+  
+  // 取出所有table
+  TupleSchema schema;
+  total_table = 0;
+  for (size_t i = 0;i < selects.relation_num; ++i){
+    const char *table_name = selects.relations[i];
+    Table * table = DefaultHandler::get_default().find_table(db, table_name);
+    if (nullptr == table) {
+      LOG_WARN("No such table [%s] in db [%s]", table_name, db);
+      return RC::SCHEMA_TABLE_NOT_EXIST;
+    }
+    if (!Table_Map[table]) {
+      Table_Map[table] = ++total_table;
+      Table_To_Table[total_table].clear();
+      Field_To_Field_from[total_table].clear();
+      Field_To_Field_targ[total_table].clear();
+      // Multi_tables_list[total_table] = table;
+      Multi_tables_compop_[total_table].clear();
+      if(selects.attr_num == 1 && nullptr == selects.attributes[0].relation_name && strcmp("*", selects.attributes[0].attribute_name) == 0) {
+        // 列出这张表所有字段
+        TupleSchema::from_table(table, schema);
+        for (int j = 1; j < table->table_meta().field_num(); ++j) {
+          tuple_filter[total_table - 1][j - 1] = 1;
+        }
+      }
+    }
+  }
+
+  int num;
+  if(!(selects.attr_num == 1 && strcmp("*", selects.attributes[0].attribute_name) == 0)) {
+    for (int i = selects.attr_num - 1; i >= 0; i--) {
+      const RelAttr &attr = selects.attributes[i];
+      Table * table = DefaultHandler::get_default().find_table(db,selects.attributes[i].relation_name);
+      num = Table_Map[table];
+      if (0 == strcmp("*", attr.attribute_name)) {
+        // 列出这张表所有字段
+        TupleSchema::from_table(table, schema);
+        int sz = table->table_meta().field_num();
+        for (int j = 1; j < sz; ++j) {
+          tuple_filter[num - 1][j - 1] = 1;
+        }
+        break; // 没有校验，给出* 之后，再写字段的错误
+      } else {
+        // 列出这张表相关字段
+        rc = schema_add_field(table, attr.attribute_name, schema);
+        tuple_filter[num - 1][table->real_table_meta().get_index_by_field(attr.attribute_name) - 1];
+        if (rc != RC::SUCCESS) {
+          return rc;
+        }
+      }
+    }
+  }
+  multi_tables_tuple_set.set_schema(schema);
+
+  // table之间的filter
+  Table * table1;
+  Table * table2;
+  Table * t_table;
+  int field_meta1, field_meta2, t_field_meta;
+  int num2;
+  for (size_t i = 0;i < selects.condition_num;++i) {
+    const Condition &condition = selects.conditions[i];
+    if(condition.left_is_attr == 1 && condition.right_is_attr == 1 &&
+        strcmp(condition.left_attr.relation_name, condition.right_attr.relation_name) != 0) {
+
+        table1 = DefaultHandler::get_default().find_table(db, condition.left_attr.relation_name);
+        if (nullptr == table1) {
+          LOG_WARN("No such table [%s] in db [%s]", condition.left_attr.relation_name, db);
+          return RC::SCHEMA_TABLE_NOT_EXIST;
+        }
+        table2 = DefaultHandler::get_default().find_table(db, condition.right_attr.relation_name);
+        if (nullptr == table2) {
+          LOG_WARN("No such table [%s] in db [%s]", condition.right_attr.relation_name, db);
+          return RC::SCHEMA_TABLE_NOT_EXIST;
+        }
+        field_meta1 = table1->real_table_meta().get_index_by_field(condition.left_attr.attribute_name);
+        if (-1 == field_meta1) {
+          LOG_WARN("No such field. %s.%s", table1->name(), condition.left_attr.attribute_name);
+          return RC::SCHEMA_FIELD_MISSING;
+        }
+        field_meta2 = table2->real_table_meta().get_index_by_field(condition.right_attr.attribute_name);
+        if (-1 == field_meta2) {
+          LOG_WARN("No such field. %s.%s", table2->name(), condition.left_attr.attribute_name);
+          return RC::SCHEMA_FIELD_MISSING;
+        }
+        if (Table_Map[table1] > Table_Map[table2]) {
+          t_table = table1; t_field_meta = field_meta1;
+          table1 = table2;  field_meta1 = field_meta2;
+          table2 = t_table; field_meta2 = t_field_meta;
+        }
+        num2 = Table_Map[table2];
+        Table_To_Table[num2 - 1].push_back(table1);
+        Field_To_Field_from[num2 - 1].push_back(field_meta1 - 1);
+        Field_To_Field_targ[num2 - 1].push_back(field_meta2 - 1);
+        Multi_tables_compop_[num2 - 1].push_back(condition.comp);
+        // for (size_t j = 0;j < selects.relation_num; ++j) {
+        //   const char *table_name = selects.relations[j];
+        //   if(strcmp(table_name, table1->table_meta().name()) == 0) {
+        //     if(tuple_sets.size() < j+1) {
+        //       LOG_ERROR("Never print this. The tuple sets is limited.");
+        //       return RC::GENERIC_ERROR;
+        //     }
+        //     tuple_sets[j].multi_select_To_tables.push_back(table2);
+        //     tuple_sets[j].multi_select_To_field.push_back(field_meta2);
+        //   } else if(strcmp(table_name, table2->table_meta().name()) == 0) {
+        //     if(tuple_sets.size() < j+1) {
+        //       LOG_ERROR("Never print this. The tuple sets is limited.");
+        //       return RC::GENERIC_ERROR;
+        //     }
+        //     tuple_sets[j].multi_select_To_tables.push_back(table1);
+        //     tuple_sets[j].multi_select_To_field.push_back(field_meta1);
+        //   }
+        // }
+      }
+  }
+
+  LOG_INFO("End of init multi tables.");
+  return RC::SUCCESS;
+}
+
 // 这里没有对输入的某些信息做合法性校验，比如查询的列名、where条件中的列名等，没有做必要的合法性校验
 // 需要补充上这一部分. 校验部分也可以放在resolve，不过跟execution放一起也没有关系
 RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_event) {
@@ -226,6 +472,22 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
   Session *session = session_event->get_client()->session;
   Trx *trx = session->current_trx();
   const Selects &selects = sql->sstr.selection;
+
+  // if (selects.relation_num > 1){
+  //   rc = do_multi_tables_select(trx, session, selects, db);
+  //   if(rc != RC::SUCCESS){
+  //     LOG_ERROR("Failed to do multi tables select.");
+  //     end_trx_if_need(session, trx, false);
+  //     return rc;
+  //   }
+
+  //   std::stringstream ss;
+  //   //print
+  //   session_event->set_response(ss.str());
+  //   end_trx_if_need(session, trx, true);
+  //   return rc;
+  // }
+
   // 把所有的表和只跟这张表关联的condition都拿出来，生成最底层的select 执行节点
   std::vector<SelectExeNode *> select_nodes;
   for (size_t i = 0; i < selects.relation_num; i++) {
@@ -249,7 +511,8 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
     return RC::SQL_SYNTAX;
   }
 
-  std::vector<TupleSet> tuple_sets;
+  tuple_sets_.clear();
+  std::stringstream ss;
   for (SelectExeNode *&node: select_nodes) {
     TupleSet tuple_set;
     rc = node->execute(tuple_set);
@@ -260,16 +523,30 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
       end_trx_if_need(session, trx, false);
       return rc;
     } else {
-      tuple_sets.push_back(std::move(tuple_set));
+      // tuple_set.print(ss);
+      tuple_sets_.push_back(std::move(tuple_set));
     }
   }
 
-  std::stringstream ss;
-  if (tuple_sets.size() > 1) {
+  if (tuple_sets_.size() > 1) {
     // 本次查询了多张表，需要做join操作
+    rc = multi_tables_select_init(trx, session, selects, db, multi_tables_tuple_set);
+    if(rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to initialize multi tables select.");
+      return rc;
+    }
+    if(tuple_sets_.size() != total_table) {
+      LOG_ERROR("Repetitive tables exist. Please check your input. Tuple sets size = %d, total table num = %d.", tuple_sets_.size(), total_table);
+      return RC::GENERIC_ERROR;
+    }
+    // tuple_sets.front().print(ss);
+    // do_multi_tables_select_DFS_tuple.clear();
+    do_multi_tables_select_DFS(0, multi_tables_tuple_set);
+    LOG_INFO("DFS end.");
+    multi_tables_tuple_set.print(ss);
   } else {
     // 当前只查询一张表，直接返回结果即可
-    tuple_sets.front().print(ss);
+    tuple_sets_.front().print(ss);
   }
 
   for (SelectExeNode *& tmp_node: select_nodes) {
@@ -312,7 +589,7 @@ RC create_selection_executor(Trx *trx, const Selects &selects, const char *db, c
   for (int i = selects.attr_num - 1; i >= 0; i--) {
     const RelAttr &attr = selects.attributes[i];
     if (nullptr == attr.relation_name || 0 == strcmp(table_name, attr.relation_name)) {
-      if (0 == strcmp("*", attr.attribute_name)) {
+      if (0 == strcmp("*", attr.attribute_name) || selects.relation_num > 1) {
         // 列出这张表所有字段
         TupleSchema::from_table(table, schema);
         break; // 没有校验，给出* 之后，再写字段的错误
