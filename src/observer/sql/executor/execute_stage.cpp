@@ -531,7 +531,7 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
       end_trx_if_need(session, trx, false);
       return rc;
     } else {
-      // tuple_set.print(ss);
+      // tuple_set.print(ss, false);
       tuple_sets_.push_back(std::move(tuple_set));
     }
   }
@@ -551,10 +551,10 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
     // do_multi_tables_select_DFS_tuple.clear();
     do_multi_tables_select_DFS(0, multi_tables_tuple_set);
     LOG_INFO("DFS end.");
-    multi_tables_tuple_set.print(ss);
+    multi_tables_tuple_set.print(ss, true);
   } else {
     // 当前只查询一张表，直接返回结果即可
-    tuple_sets_.front().print(ss);
+    tuple_sets_.front().print(ss, false);
   }
 
   for (SelectExeNode *& tmp_node: select_nodes) {

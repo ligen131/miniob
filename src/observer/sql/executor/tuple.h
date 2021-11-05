@@ -107,7 +107,7 @@ public:
     fields_.clear();
   }
 
-  void print(std::ostream &os) const;
+  void print(std::ostream &os, bool is_multi_tables) const;
 public:
   static void from_table(const Table *table, TupleSchema &schema);
 private:
@@ -137,7 +137,7 @@ public:
   const Tuple &get(int index) const;
   const std::vector<Tuple> &tuples() const;
 
-  void print(std::ostream &os) const;
+  void print(std::ostream &os, bool is_multi_tables) const;
 public:
   const TupleSchema &schema() const {
     return schema_;
