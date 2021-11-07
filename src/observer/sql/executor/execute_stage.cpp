@@ -458,7 +458,7 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
   LOG_INFO("Start to do aggr func.");
 
   // 输出表头
-  for (int i = selects.attr_num - 1; i >= 0; --i) {
+  for (size_t i = 0;i < selects.attr_num ; ++i) {
     switch(selects.attributes[i].agg){
       case COUNT:{
         os << "count(" << selects.attributes[i].attribute_name << ")";
@@ -482,11 +482,11 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
       }
       break;
     }
-    if (i != 0) os << " | "; else os << std::endl;
+    if (i != selects.attr_num - 1) os << " | "; else os << std::endl;
   }
   
   // 输出结果
-  for (int i = selects.attr_num - 1; i >= 0; --i) {
+  for (size_t i = 0;i < selects.attr_num ; ++i) {
     switch(selects.attributes[i].agg){
       case COUNT: {
         os << std::to_string(tupleset.size()); // 未考虑 NULL 的情况
@@ -569,7 +569,7 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
       }
       break;
     }
-    if (i != 0) os << " | "; else os << std::endl;
+    if (i != selects.attr_num - 1) os << " | "; else os << std::endl;
   }
   LOG_INFO("Do aggr func end.");
   return RC::SUCCESS;

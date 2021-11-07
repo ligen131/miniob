@@ -53,15 +53,15 @@
 > miniob > SUCCESS
 > miniob > SUCCESS
 > miniob > SUCCESS
-> miniob > avg(id) | count(1)
-> 37.4286 | 7
+> miniob > count(1) | avg(id)
+> 7 | 37.4286
 > miniob > FAILURE
-> miniob > avg(id) | min(da) | max(id) | count(*)
-> 4.83333 | 1976-02-29 | 11 | 6
-> miniob > avg(id) | min(da) | max(id)
-> 4.83333 | 1976-02-29 | 11
-> miniob > min(da) | max(da) | count(*) | count(id) | count(2) | count(1)
-> 1976-02-29 | 2035-01-01 | 7 | 7 | 7 | 7
+> miniob > count(*) | max(id) | min(da) | avg(id)
+> 6 | 11 | 1976-02-29 | 4.83333
+> miniob > max(id) | min(da) | avg(id)
+> 11 | 1976-02-29 | 4.83333
+> miniob > count(1) | count(2) | count(id) | count(*) | max(da) | min(da)
+> 7 | 7 | 7 | 7 | 2035-01-01 | 1976-02-29
 > miniob > FAILURE
 > miniob > FAILURE
 > miniob > FAILURE
