@@ -415,6 +415,29 @@ attr_list:
         // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length++].relation_name=$2;
   	  }
   	;
+aggr_select_attr:
+    STAR{  
+      
+		}
+    | ID {
+
+		}
+  	| ID DOT ID {
+
+		}
+    ;
+aggr_attr_list:
+    /* empty */
+    | COMMA STAR aggr_attr_list {
+      
+      }
+    | COMMA ID aggr_attr_list {
+      
+      }
+    | COMMA ID DOT ID aggr_attr_list {
+      
+  	  }
+  	;
 aggr_list:
     /* empty */
     | COMMA aggOp aggregation_func aggr_list {
@@ -440,6 +463,16 @@ aggregation_func:
 	| LBRACE ID RBRACE {
 			RelAttr attr;
 			relation_attr_init_(&attr, NULL, $2, CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| LBRACE RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
 		}
     ;

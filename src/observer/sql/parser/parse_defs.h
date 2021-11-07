@@ -29,7 +29,8 @@ typedef enum {
   COUNT,
   MAX,
   MIN,
-  AVG
+  AVG,
+  AGG_INVALID
 } AggregationOp;
 
 //属性结构体

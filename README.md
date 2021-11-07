@@ -13,7 +13,7 @@
 
 ## Log
 
-`Lastest Update: 2021-11-07 16:27`
+`Lastest Update: 2021-11-07 17:04`
 
 > v0.5.0 2021-11-7 16:27
 >
@@ -37,6 +37,7 @@
 > select count(id,name) from t;
 > select count(hh) from t;
 > select count(*),count(hh) from t;
+> select max(id),count(id,name) from t;
 > drop table t;
 > exit;
 > ```
@@ -54,25 +55,26 @@
 > miniob > SUCCESS
 > miniob > avg(id) | count(1)
 > 37.4286 | 7
-> miniob > Failed to parse sql: select count(id,name) from t;
-> , error msg: Unknown error
+> miniob > FAILURE
 > miniob > avg(id) | min(da) | max(id) | count(*)
 > 4.83333 | 1976-02-29 | 11 | 6
 > miniob > avg(id) | min(da) | max(id)
 > 4.83333 | 1976-02-29 | 11
 > miniob > min(da) | max(da) | count(*) | count(id) | count(2) | count(1)
 > 1976-02-29 | 2035-01-01 | 7 | 7 | 7 | 7
-> miniob > Failed to parse sql: select count() from t;
-> , error msg: Unknown error
-> miniob > Failed to parse sql: select count(id,name) from t;
-> , error msg: Unknown error
 > miniob > FAILURE
 > miniob > FAILURE
+> miniob > FAILURE
+> miniob > FAILURE
+> miniob > FAILURE
+> miniob > SUCCESS
 > ```
 >
 > *期望得分：70
 >
-> *因为有些非法情况题目并没有约束输出，故可能会不过。
+> ~~*因为有些非法情况题目并没有约束输出，故可能会不过。~~
+>
+> *UPD: 17:04非法输入需要全部返回FAILURE，已解决。
 >
 > v0.4.0-v4.0.1 2021-11-05 16:21-16:52
 >
