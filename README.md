@@ -15,6 +15,62 @@
 
 `Lastest Update: 2021-11-05 16:52`
 
+> v0.5.0 2021-11-7 16:27
+>
+> 完成aggregation-func。用例测试如下：
+>
+> ```sql
+> create table t(id int,name char(4),da date);
+> insert into t values(1,'lige','2021-10-30');
+> insert into t values(11,'lige','2021-10-31');
+> insert into t values(2,'aset','2000-2-29');
+> insert into t values(4,'deft','1976-2-29');
+> insert into t values(5,'ghit','2035-1-1');
+> insert into t values(6,'jklt','2021-6-30');
+> insert into t values(233,'nowt','2021-10-31');
+> select count(1) from t;
+> select count(*),max(id),min(da),avg(id) from t where t.id<233;
+> select max(id),min(da),avg(id) from t where t.id<233;
+> select count(1),count(2),count(id),count(*),max(da),min(da) from t;
+> select count() from t;
+> select count(id,name) from t;
+> select count(hh) from t;
+> select count(*),count(hh) from t;
+> drop table t;
+> exit;
+> ```
+>
+> 输出：
+>
+> ```
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > count(1)
+> 7
+> miniob > avg(id) | min(da) | max(id) | count(*)
+> 4.66667 | 1976-02-29 | 11 | 6
+> miniob > avg(id) | min(da) | max(id)
+> 4.66667 | 1976-02-29 | 11
+> miniob > min(da) | max(da) | count(*) | count(id) | count(2) | count(1)
+> 1976-02-29 | 2035-01-01 | 7 | 7 | 7 | 7
+> miniob > Failed to parse sql: select count() from t;
+> , error msg: Unknown error
+> miniob > Failed to parse sql: select count(id,name) from t;
+> , error msg: Unknown error
+> miniob > FAILURE
+> miniob > FAILURE
+> ```
+>
+> *期望得分：70
+>
+> *因为有些非法情况题目并没有约束输出，故可能会不过。
+>
 > v0.4.0-v4.0.1 2021-11-05 16:21-16:52
 >
 > 妈的，经历了改了许多写法，终于他妈的完成了select-tables。用例测试如下：

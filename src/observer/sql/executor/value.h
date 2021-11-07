@@ -28,6 +28,7 @@ public:
 
   virtual void to_string(std::ostream &os) const = 0;
   virtual int compare(const TupleValue &other) const = 0;
+  virtual float get_() const = 0;
 private:
 };
 
@@ -43,6 +44,10 @@ public:
   int compare(const TupleValue &other) const override {
     const IntValue & int_other = (const IntValue &)other;
     return value_ - int_other.value_;
+  }
+
+  float get_() const override {
+    return (float)value_;
   }
 
 private:
@@ -68,6 +73,10 @@ public:
       return -1;
     }
     return 0;
+  }
+
+  float get_() const override {
+    return value_;
   }
 private:
   float value_;
@@ -106,6 +115,11 @@ public:
     }
     LOG_INFO("Compare %s %s",value_.c_str(), string_other.value_.c_str());
     return strcmp(value_.c_str(), string_other.value_.c_str());
+  }
+
+  float get_() const override {
+    int d = Check_is_it_date();
+    return (float)d;
   }
 private:
   std::string value_;

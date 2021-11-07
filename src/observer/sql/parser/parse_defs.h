@@ -23,8 +23,18 @@ See the Mulan PSL v2 for more details. */
 #define MAX_ERROR_MESSAGE 20
 #define MAX_DATA 50
 
+
+typedef enum {
+  NO_AGOP,
+  COUNT,
+  MAX,
+  MIN,
+  AVG
+} AggregationOp;
+
 //属性结构体
 typedef struct {
+  AggregationOp agg;
   char *relation_name;   // relation name (may be NULL) 表名
   char *attribute_name;  // attribute name              属性名
 } RelAttr;
@@ -177,6 +187,7 @@ typedef struct Query {
 extern "C" {
 #endif  // __cplusplus
 
+void relation_attr_init_(RelAttr *relation_attr, const char *relation_name, const char *attribute_name, AggregationOp AggOp);
 void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const char *attribute_name);
 void relation_attr_destroy(RelAttr *relation_attr);
 

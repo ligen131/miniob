@@ -19,6 +19,7 @@ typedef struct ParserContext {
   Value values[MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
+  AggregationOp aggop;
 	char id[MAX_NUM];
 } ParserContext;
 
@@ -32,6 +33,18 @@ char *substr(const char *s,int n1,int n2)/*从s中提取下标为n1~n2的字符�
   }
   sp[j] = 0;
   return sp;
+}
+
+char *int_to_char_array(int x) {
+	int n = 0, y = x;
+	while(y) ++n, y /= 10;
+	char *s = malloc(sizeof(char) * (n + 1));
+	for(int i = n - 1; i >= 0; --i) {
+		s[i] = x % 10 + '0';
+		x /= 10;
+	}
+  s[n]=0;
+	return s;
 }
 
 void yyerror(yyscan_t scanner, const char *str)
@@ -103,6 +116,10 @@ ParserContext *get_context(yyscan_t scanner)
         LE
         GE
         NE
+		AGG_COUNT
+		AGG_MAX
+		AGG_MIN
+		AGG_AVG
 
 %union {
   struct _Attr *attr;
@@ -362,7 +379,10 @@ select:				/*  select 语句的语法解析树*/
 	;
 
 select_attr:
-    STAR {  
+    aggregation {
+
+    }
+    | STAR {  
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, "*");
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
@@ -395,7 +415,34 @@ attr_list:
         // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length++].relation_name=$2;
   	  }
   	;
+aggr_list:
+    /* empty */
+    | COMMA aggregation_func aggr_list {
 
+    }
+    ;
+aggregation: 
+    aggregation_func aggr_list {
+
+    }
+    ;
+aggregation_func:
+	aggOp LBRACE STAR RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| aggOp LBRACE NUMBER RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, int_to_char_array($3), CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| aggOp LBRACE ID RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, $3, CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+    ;
 rel_list:
     /* empty */
     | COMMA ID rel_list {	
@@ -568,6 +615,13 @@ comOp:
     | LE { CONTEXT->comp = LESS_EQUAL; }
     | GE { CONTEXT->comp = GREAT_EQUAL; }
     | NE { CONTEXT->comp = NOT_EQUAL; }
+    ;
+
+aggOp:
+  	  AGG_COUNT { CONTEXT->aggop = COUNT; }
+  	| AGG_MAX { CONTEXT->aggop = MAX; }
+  	| AGG_MIN { CONTEXT->aggop = MIN; }
+  	| AGG_AVG { CONTEXT->aggop = AVG; }
     ;
 
 load_data:

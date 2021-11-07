@@ -447,28 +447,135 @@ RC multi_tables_select_init(Trx *trx, Session *session, const Selects &selects, 
         Field_To_Field_from[num2 - 1].push_back(field_meta1 - 1);
         Field_To_Field_targ[num2 - 1].push_back(field_meta2 - 1);
         Multi_tables_compop_[num2 - 1].push_back(condition.comp);
-        // for (size_t j = 0;j < selects.relation_num; ++j) {
-        //   const char *table_name = selects.relations[j];
-        //   if(strcmp(table_name, table1->table_meta().name()) == 0) {
-        //     if(tuple_sets.size() < j+1) {
-        //       LOG_ERROR("Never print this. The tuple sets is limited.");
-        //       return RC::GENERIC_ERROR;
-        //     }
-        //     tuple_sets[j].multi_select_To_tables.push_back(table2);
-        //     tuple_sets[j].multi_select_To_field.push_back(field_meta2);
-        //   } else if(strcmp(table_name, table2->table_meta().name()) == 0) {
-        //     if(tuple_sets.size() < j+1) {
-        //       LOG_ERROR("Never print this. The tuple sets is limited.");
-        //       return RC::GENERIC_ERROR;
-        //     }
-        //     tuple_sets[j].multi_select_To_tables.push_back(table1);
-        //     tuple_sets[j].multi_select_To_field.push_back(field_meta1);
-        //   }
-        // }
       }
   }
 
   LOG_INFO("End of init multi tables.");
+  return RC::SUCCESS;
+}
+
+inline void* Max (void* a, void* b) {
+  if (a > b) return a;
+  return b;
+}
+RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::ostream &os) {
+  LOG_INFO("Start to do aggr func.");
+
+  // 输出表头
+  for (int i = selects.attr_num - 1; i >= 0; --i) {
+    switch(selects.attributes[i].agg){
+      case COUNT:{
+        os << "count(" << selects.attributes[i].attribute_name << ")";
+      }
+      break;
+      case MAX:{
+        os << "max(" << selects.attributes[i].attribute_name << ")";
+      }
+      break;
+      case MIN:{
+        os << "min(" << selects.attributes[i].attribute_name << ")";
+      }
+      break;
+      case AVG:{
+        os << "avg(" << selects.attributes[i].attribute_name << ")";
+      }
+      break;
+      default:{
+        LOG_ERROR("Invalid Input.");
+        return RC::GENERIC_ERROR;
+      }
+      break;
+    }
+    if (i != 0) os << " | "; else os << std::endl;
+  }
+  
+  // 输出结果
+  for (int i = selects.attr_num - 1; i >= 0; --i) {
+    switch(selects.attributes[i].agg){
+      case COUNT: {
+        os << std::to_string(tupleset.size()); // 未考虑 NULL 的情况
+      }
+      break;
+      case MAX: {
+        if(selects.attributes[i].attribute_name[0] >= '0' && selects.attributes[i].attribute_name[0] <= '9'){
+          os << selects.attributes[i].attribute_name;
+          break;
+        }
+        if(0 == strcmp("*", selects.attributes[i].attribute_name)) {
+          LOG_ERROR("Invalid Input.");
+          return RC::GENERIC_ERROR;
+        }
+        size_t value_index = 0;
+        for (std::vector<TupleField>::const_iterator iter = tupleset.schema().fields().begin(); iter != tupleset.schema().fields().end(); ++iter, ++value_index) {
+          if (0 == strcmp((*iter).field_name(), selects.attributes[i].attribute_name)) {
+            break;
+          }
+        }
+        size_t sz = tupleset.size(), ans = 0;
+        for (size_t j = 1; j < sz; ++j) {
+          if (tupleset.tuples()[j].values()[value_index].get()->compare(*(tupleset.tuples()[ans].values()[value_index].get())) > 0) {
+            ans = j;
+          }
+        }
+        tupleset.tuples()[ans].values()[value_index].get()->to_string(os);
+      }
+      break;
+      case MIN: {
+        if(selects.attributes[i].attribute_name[0] >= '0' && selects.attributes[i].attribute_name[0] <= '9'){
+          os << selects.attributes[i].attribute_name;
+          break;
+        }
+        if(0 == strcmp("*", selects.attributes[i].attribute_name)) {
+          LOG_ERROR("Invalid Input.");
+          return RC::GENERIC_ERROR;
+        }
+        size_t value_index = 0;
+        for (std::vector<TupleField>::const_iterator iter = tupleset.schema().fields().begin(); iter != tupleset.schema().fields().end(); ++iter, ++value_index) {
+          if (0 == strcmp((*iter).field_name(), selects.attributes[i].attribute_name)) {
+            break;
+          }
+        }
+        size_t sz = tupleset.size(), ans = 0;
+        for (size_t j = 1; j < sz; ++j) {
+          if (tupleset.tuples()[j].values()[value_index].get()->compare(*(tupleset.tuples()[ans].values()[value_index].get())) < 0) {
+            ans = j;
+          }
+        }
+        tupleset.tuples()[ans].values()[value_index].get()->to_string(os);
+      }
+      break;
+      case AVG: {
+        if(selects.attributes[i].attribute_name[0] >= '0' && selects.attributes[i].attribute_name[0] <= '9'){
+          os << selects.attributes[i].attribute_name;
+          break;
+        }
+        if(0 == strcmp("*", selects.attributes[i].attribute_name)) {
+          LOG_ERROR("Invalid Input.");
+          return RC::GENERIC_ERROR;
+        }
+        size_t value_index = 0;
+        for (std::vector<TupleField>::const_iterator iter = tupleset.schema().fields().begin(); iter != tupleset.schema().fields().end(); ++iter, ++value_index) {
+          if (0 == strcmp((*iter).field_name(), selects.attributes[i].attribute_name)) {
+            break;
+          }
+        }
+        size_t sz = tupleset.size();
+        float ans = 0;
+        for (size_t j = 1; j < sz; ++j) {
+          ans += tupleset.tuples()[j].values()[value_index].get()->get_();
+        }
+        os << (float)(ans / (1.0 * sz));
+      }
+      break;
+      default:{
+        LOG_ERROR("Invalid Input.");
+        return RC::GENERIC_ERROR;
+      }
+      break;
+    }
+    if (i != 0) os << " | "; else os << std::endl;
+  }
+  LOG_INFO("Do aggr func end.");
   return RC::SUCCESS;
 }
 
@@ -480,21 +587,6 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
   Session *session = session_event->get_client()->session;
   Trx *trx = session->current_trx();
   const Selects &selects = sql->sstr.selection;
-
-  // if (selects.relation_num > 1){
-  //   rc = do_multi_tables_select(trx, session, selects, db);
-  //   if(rc != RC::SUCCESS){
-  //     LOG_ERROR("Failed to do multi tables select.");
-  //     end_trx_if_need(session, trx, false);
-  //     return rc;
-  //   }
-
-  //   std::stringstream ss;
-  //   //print
-  //   session_event->set_response(ss.str());
-  //   end_trx_if_need(session, trx, true);
-  //   return rc;
-  // }
 
   // 把所有的表和只跟这张表关联的condition都拿出来，生成最底层的select 执行节点
   std::vector<SelectExeNode *> select_nodes;
@@ -520,7 +612,6 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
   }
 
   tuple_sets_.clear();
-  std::stringstream ss;
   for (SelectExeNode *&node: select_nodes) {
     TupleSet tuple_set;
     rc = node->execute(tuple_set);
@@ -531,20 +622,39 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
       end_trx_if_need(session, trx, false);
       return rc;
     } else {
-      // tuple_set.print(ss, false);
       tuple_sets_.push_back(std::move(tuple_set));
     }
   }
 
+  std::stringstream ss;
+  if (selects.attributes[0].agg != NO_AGOP) {
+    rc = do_aggregation_func_select(tuple_sets_.front(), selects, ss);
+    if(rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to do aggregation function select.");
+      for (SelectExeNode *& tmp_node: select_nodes) {
+        delete tmp_node;
+      }
+      end_trx_if_need(session, trx, false);
+      return rc;
+    }
+  }else 
   if (tuple_sets_.size() > 1) {
     // 本次查询了多张表，需要做join操作
     rc = multi_tables_select_init(trx, session, selects, db, multi_tables_tuple_set);
     if(rc != RC::SUCCESS) {
       LOG_ERROR("Failed to initialize multi tables select.");
+      for (SelectExeNode *& tmp_node: select_nodes) {
+        delete tmp_node;
+      }
+      end_trx_if_need(session, trx, false);
       return rc;
     }
     if(tuple_sets_.size() != total_table) {
       LOG_ERROR("Repetitive tables exist. Please check your input. Tuple sets size = %d, total table num = %d.", tuple_sets_.size(), total_table);
+      for (SelectExeNode *& tmp_node: select_nodes) {
+        delete tmp_node;
+      }
+      end_trx_if_need(session, trx, false);
       return RC::GENERIC_ERROR;
     }
     // tuple_sets.front().print(ss);
@@ -600,10 +710,10 @@ RC create_selection_executor(Trx *trx, const Selects &selects, const char *db, c
   for (int i = selects.attr_num - 1; i >= 0; i--) {
     const RelAttr &attr = selects.attributes[i];
     if (nullptr == attr.relation_name || 0 == strcmp(table_name, attr.relation_name)) {
-      if (0 == strcmp("*", attr.attribute_name)) {
+      if (0 == strcmp("*", attr.attribute_name) || (attr.attribute_name[0] >= '0' && attr.attribute_name[0] <= '9')) {
         // 列出这张表所有字段
         TupleSchema::from_table(table, schema);
-        break; // 没有校验，给出* 之后，再写字段的错误
+        // break; // 没有校验，给出* 之后，再写字段的错误
       } else {
         // 列出这张表相关字段
         RC rc = schema_add_field(table, attr.attribute_name, schema);
