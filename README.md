@@ -13,7 +13,7 @@
 
 ## Log
 
-`Lastest Update: 2021-11-05 16:52`
+`Lastest Update: 2021-11-07 16:27`
 
 > v0.5.0 2021-11-7 16:27
 >
@@ -28,7 +28,7 @@
 > insert into t values(5,'ghit','2035-1-1');
 > insert into t values(6,'jklt','2021-6-30');
 > insert into t values(233,'nowt','2021-10-31');
-> select count(1) from t;
+> select count(1),avg(id) from t;
 > select count(*),max(id),min(da),avg(id) from t where t.id<233;
 > select max(id),min(da),avg(id) from t where t.id<233;
 > select count(1),count(2),count(id),count(*),max(da),min(da) from t;
@@ -51,12 +51,12 @@
 > miniob > SUCCESS
 > miniob > SUCCESS
 > miniob > SUCCESS
-> miniob > count(1)
-> 7
+> miniob > avg(id) | count(1)
+> 37.4286 | 7
 > miniob > avg(id) | min(da) | max(id) | count(*)
-> 4.66667 | 1976-02-29 | 11 | 6
+> 4.83333 | 1976-02-29 | 11 | 6
 > miniob > avg(id) | min(da) | max(id)
-> 4.66667 | 1976-02-29 | 11
+> 4.83333 | 1976-02-29 | 11
 > miniob > min(da) | max(da) | count(*) | count(id) | count(2) | count(1)
 > 1976-02-29 | 2035-01-01 | 7 | 7 | 7 | 7
 > miniob > Failed to parse sql: select count() from t;

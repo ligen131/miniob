@@ -454,10 +454,6 @@ RC multi_tables_select_init(Trx *trx, Session *session, const Selects &selects, 
   return RC::SUCCESS;
 }
 
-inline void* Max (void* a, void* b) {
-  if (a > b) return a;
-  return b;
-}
 RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::ostream &os) {
   LOG_INFO("Start to do aggr func.");
 
@@ -561,7 +557,7 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
         }
         size_t sz = tupleset.size();
         float ans = 0;
-        for (size_t j = 1; j < sz; ++j) {
+        for (size_t j = 0; j < sz; ++j) {
           ans += tupleset.tuples()[j].values()[value_index].get()->get_();
         }
         os << (float)(ans / (1.0 * sz));
