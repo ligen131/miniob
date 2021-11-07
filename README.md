@@ -29,6 +29,7 @@
 > insert into t values(6,'jklt','2021-6-30');
 > insert into t values(233,'nowt','2021-10-31');
 > select count(1),avg(id) from t;
+> select count(id,name) from t;
 > select count(*),max(id),min(da),avg(id) from t where t.id<233;
 > select max(id),min(da),avg(id) from t where t.id<233;
 > select count(1),count(2),count(id),count(*),max(da),min(da) from t;
@@ -53,6 +54,8 @@
 > miniob > SUCCESS
 > miniob > avg(id) | count(1)
 > 37.4286 | 7
+> miniob > Failed to parse sql: select count(id,name) from t;
+> , error msg: Unknown error
 > miniob > avg(id) | min(da) | max(id) | count(*)
 > 4.83333 | 1976-02-29 | 11 | 6
 > miniob > avg(id) | min(da) | max(id)

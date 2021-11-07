@@ -379,7 +379,7 @@ select:				/*  select 语句的语法解析树*/
 	;
 
 select_attr:
-    aggregation {
+    aggOp aggregation {
 
     }
     | STAR {  
@@ -417,7 +417,7 @@ attr_list:
   	;
 aggr_list:
     /* empty */
-    | COMMA aggregation_func aggr_list {
+    | COMMA aggOp aggregation_func aggr_list {
 
     }
     ;
@@ -427,19 +427,19 @@ aggregation:
     }
     ;
 aggregation_func:
-	aggOp LBRACE STAR RBRACE {
+	LBRACE STAR RBRACE {
 			RelAttr attr;
 			relation_attr_init_(&attr, NULL, "*", CONTEXT->aggop);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
 		}
-	| aggOp LBRACE NUMBER RBRACE {
+	| LBRACE NUMBER RBRACE {
 			RelAttr attr;
-			relation_attr_init_(&attr, NULL, int_to_char_array($3), CONTEXT->aggop);
+			relation_attr_init_(&attr, NULL, int_to_char_array($2), CONTEXT->aggop);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
 		}
-	| aggOp LBRACE ID RBRACE {
+	| LBRACE ID RBRACE {
 			RelAttr attr;
-			relation_attr_init_(&attr, NULL, $3, CONTEXT->aggop);
+			relation_attr_init_(&attr, NULL, $2, CONTEXT->aggop);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
 		}
     ;
