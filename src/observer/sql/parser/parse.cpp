@@ -29,6 +29,7 @@ void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const
     relation_attr->relation_name = nullptr;
   }
   relation_attr->attribute_name = strdup(attribute_name);
+  relation_attr->agg = NO_AGOP;
 }
 void relation_attr_init_(RelAttr *relation_attr, const char *relation_name, const char *attribute_name, AggregationOp AggOp) {
   relation_attr_init(relation_attr, relation_name, attribute_name);
