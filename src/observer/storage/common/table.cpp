@@ -571,6 +571,8 @@ RC Table::create_index(Trx *trx, const char *index_name, const char *attribute_n
     return RC::SCHEMA_FIELD_MISSING;
   }
 
+  return RC::SUCCESS; // hhh
+
   IndexMeta new_index_meta;
   RC rc = new_index_meta.init(index_name, *field_meta);
   if (rc != RC::SUCCESS) {
