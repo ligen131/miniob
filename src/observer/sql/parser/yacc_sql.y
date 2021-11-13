@@ -241,7 +241,7 @@ create_index:		/*create index 语句的语法解析树*/
     ;
 create_index_attr_list:
 	/* empty */
-	| COMMA ID {
+	| COMMA ID create_index_attr_list {
 
 	}
 	;
