@@ -17,9 +17,11 @@ typedef struct ParserContext {
   size_t from_length;
   size_t value_length;
   size_t data_num;
+  size_t index_length;
   Value values[MAX_NUM];
   int data_list_r[MAX_NUM];
   Condition conditions[MAX_NUM];
+  char *index_list[MAX_NUM];
   CompOp comp;
   AggregationOp aggop;
 	char id[MAX_NUM];
@@ -58,6 +60,7 @@ void yyerror(yyscan_t scanner, const char *str)
   context->from_length = 0;
   context->select_length = 0;
   context->value_length = 0;
+  context->index_length = 0;
   context->ssql->sstr.insertion.value_num = 0;
   printf("parse sql failed. error=%s", str);
 }
@@ -235,14 +238,16 @@ desc_table:
 create_index:		/*create index 语句的语法解析树*/
     CREATE INDEX ID ON ID LBRACE ID create_index_attr_list RBRACE SEMICOLON 
 		{
+			CONTEXT->index_list[CONTEXT->index_length++] = strdup($7);
 			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
-			create_index_init(&CONTEXT->ssql->sstr.create_index, $3, $5, $7);
+			create_index_init(&CONTEXT->ssql->sstr.create_index, $3, $5, CONTEXT->index_list, CONTEXT->index_length);
+			CONTEXT->index_length = 0;
 		}
     ;
 create_index_attr_list:
 	/* empty */
 	| COMMA ID create_index_attr_list {
-
+		CONTEXT->index_list[CONTEXT->index_length++] = strdup($2);
 	}
 	;
 
