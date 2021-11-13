@@ -233,12 +233,18 @@ desc_table:
     ;
 
 create_index:		/*create index 语句的语法解析树*/
-    CREATE INDEX ID ON ID LBRACE ID RBRACE SEMICOLON 
+    CREATE INDEX ID ON ID LBRACE ID create_index_attr_list RBRACE SEMICOLON 
 		{
 			CONTEXT->ssql->flag = SCF_CREATE_INDEX;//"create_index";
 			create_index_init(&CONTEXT->ssql->sstr.create_index, $3, $5, $7);
 		}
     ;
+create_index_attr_list:
+	/* empty */
+	| COMMA ID {
+
+	}
+	;
 
 drop_index:			/*drop index 语句的语法解析树*/
     DROP INDEX ID  SEMICOLON 
@@ -439,7 +445,7 @@ select_order:
 	}
   ;
 select_attr:
-    aggOp aggregation {
+    aggregation attr_list {
 
     }
     | STAR {  
@@ -460,6 +466,9 @@ select_attr:
     ;
 attr_list:
     /* empty */
+    | COMMA aggregation attr_list {
+
+    }
     | COMMA ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $2);
@@ -498,39 +507,35 @@ aggr_attr_list:
       
   	  }
   	;
-aggr_list:
-    /* empty */
-    | COMMA aggOp aggregation_func aggr_list {
 
-    }
-    ;
-aggregation: 
-    aggregation_func aggr_list {
 
-    }
-    ;
-aggregation_func:
-	LBRACE STAR RBRACE {
+aggregation:
+	aggOp LBRACE STAR RBRACE {
 			RelAttr attr;
 			relation_attr_init_(&attr, NULL, "*", CONTEXT->aggop);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
 		}
-	| LBRACE NUMBER RBRACE {
+	| aggOp LBRACE NUMBER RBRACE {
 			RelAttr attr;
-			relation_attr_init_(&attr, NULL, int_to_char_array($2), CONTEXT->aggop);
+			relation_attr_init_(&attr, NULL, int_to_char_array($3), CONTEXT->aggop);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
 		}
-	| LBRACE ID RBRACE {
+	| aggOp LBRACE ID RBRACE {
 			RelAttr attr;
-			relation_attr_init_(&attr, NULL, $2, CONTEXT->aggop);
+			relation_attr_init_(&attr, NULL, $3, CONTEXT->aggop);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
 		}
-	| LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE {
+	| aggOp LBRACE ID DOT ID RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, $3, $5, CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| aggOp LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE {
 			RelAttr attr;
 			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
 		}
-	| LBRACE RBRACE {
+	| aggOp LBRACE RBRACE {
 			RelAttr attr;
 			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
