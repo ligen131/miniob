@@ -44,6 +44,23 @@ void relation_attr_destroy(RelAttr *relation_attr) {
   relation_attr->agg = NO_AGOP;
 }
 
+
+void orders_init(OrderBy *order, const char *relation_name, const char *attribute_name, OrderOp orderp) {
+  order->orderp = orderp;
+  if (relation_name != nullptr) {
+    order->relation_name = strdup(relation_name);
+  } else {
+    order->relation_name = nullptr;
+  }
+  order->attribute_name = strdup(attribute_name);
+}
+void orders_destroy(OrderBy *order) {
+  free(order->relation_name);
+  free(order->attribute_name);
+  order->relation_name = nullptr;
+  order->attribute_name = nullptr;
+}
+
 void value_init_integer(Value *value, int v) {
   value->type = INTS;
   // printf("INTEGER %d %d\n",value->type,v);
@@ -163,6 +180,10 @@ void selects_append_conditions(Selects *selects, Condition conditions[], size_t 
   selects->condition_num = condition_num;
 }
 
+void selects_append_orders(Selects *selects, OrderBy *orders) {
+  selects->orders[selects->order_num++] = *orders;
+}
+
 void selects_destroy(Selects *selects) {
   for (size_t i = 0; i < selects->attr_num; i++) {
     relation_attr_destroy(&selects->attributes[i]);
@@ -179,9 +200,14 @@ void selects_destroy(Selects *selects) {
     condition_destroy(&selects->conditions[i]);
   }
   selects->condition_num = 0;
+
+  for( size_t i = 0; i < selects->order_num; i++) {
+    orders_destroy(&selects->orders[i]);
+  }
+  selects->order_num = 0;
 }
 
-void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t value_num) {
+void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t value_num,size_t data_num,int data_list_r[]) {
   assert(value_num <= sizeof(inserts->values)/sizeof(inserts->values[0]));
 
   inserts->relation_name = strdup(relation_name);
@@ -189,6 +215,11 @@ void inserts_init(Inserts *inserts, const char *relation_name, Value values[], s
     inserts->values[i] = values[i];
   }
   inserts->value_num = value_num;
+
+  for (size_t i = 0; i < data_num; i++) {
+    inserts->data_list_r[i] = data_list_r[i];
+  }
+  inserts->data_num = data_num;
 }
 void inserts_destroy(Inserts *inserts) {
   free(inserts->relation_name);

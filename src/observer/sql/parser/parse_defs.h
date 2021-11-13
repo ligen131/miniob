@@ -33,6 +33,17 @@ typedef enum {
   AGG_INVALID
 } AggregationOp;
 
+typedef enum {
+  ORDER_ASC,
+  ORDER_DESC
+} OrderOp;
+
+typedef struct {
+  OrderOp orderp;
+  char *relation_name;   // relation name (may be NULL) 表名
+  char *attribute_name;  // attribute name              属性名
+} OrderBy;
+
 //属性结构体
 typedef struct {
   AggregationOp agg;
@@ -79,6 +90,8 @@ typedef struct {
   char *    relations[MAX_NUM];     // relations in From clause
   size_t    condition_num;          // Length of conditions in Where clause
   Condition conditions[MAX_NUM];    // conditions in Where clause
+  size_t    order_num;
+  OrderBy   orders[MAX_NUM];
 } Selects;
 
 // struct of insert
@@ -86,6 +99,8 @@ typedef struct {
   char *relation_name;    // Relation to insert into
   size_t value_num;       // Length of values
   Value values[MAX_NUM];  // values to insert
+  size_t data_num;
+  int data_list_r[MAX_NUM];
 } Inserts;
 
 // struct of delete
@@ -192,6 +207,9 @@ void relation_attr_init_(RelAttr *relation_attr, const char *relation_name, cons
 void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const char *attribute_name);
 void relation_attr_destroy(RelAttr *relation_attr);
 
+void orders_init(OrderBy *order, const char *relation_name, const char *attribute_name, OrderOp orderp);
+void orders_destroy(OrderBy *order);
+
 void value_init_integer(Value *value, int v);
 void value_init_float(Value *value, float v);
 void value_init_string(Value *value, const char *v);
@@ -209,9 +227,10 @@ void selects_init(Selects *selects, ...);
 void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
 void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
+void selects_append_orders(Selects *selects, OrderBy *orders);
 void selects_destroy(Selects *selects);
 
-void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t value_num);
+void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t value_num ,size_t data_num ,int data_list_r[]);
 void inserts_destroy(Inserts *inserts);
 
 void deletes_init_relation(Deletes *deletes, const char *relation_name);

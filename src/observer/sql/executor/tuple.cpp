@@ -12,6 +12,8 @@ See the Mulan PSL v2 for more details. */
 // Created by Wangyunlai on 2021/5/14.
 //
 
+#include <algorithm>
+
 #include "sql/executor/tuple.h"
 #include "storage/common/table.h"
 #include "common/log/log.h"
@@ -160,6 +162,44 @@ void TupleSet::add(Tuple &&tuple) {
 void TupleSet::clear() {
   tuples_.clear();
   schema_.clear();
+}
+
+size_t select_order_index[MAX_NUM];
+const Selects *_selects_for_order;
+bool do_select_order_cmp(const Tuple &a, const Tuple &b) {
+  for (size_t i = 0; i < _selects_for_order->order_num; ++i) {
+    int result = a.values()[select_order_index[i]].get()->compare(*(b.values()[select_order_index[i]].get()));
+    if (result < 0) return _selects_for_order->orders[i].orderp == ORDER_ASC;
+    if (result > 0) return _selects_for_order->orders[i].orderp == ORDER_DESC;
+  }
+  return false;
+}
+
+RC TupleSet::_sort(const Selects &selects) {
+  if (selects.order_num == 0) return RC::SUCCESS;
+  LOG_INFO("Begin prepare for sorting.");
+  for (size_t i = 0; i < selects.order_num; ++i) {
+    const std::vector<TupleField>&fields = schema_.fields();
+    int index = 0;
+    bool _ok = 0;
+    for (std::vector<TupleField>::const_iterator iter = fields.begin(); iter != fields.end(); ++iter, ++index) {
+      if((selects.orders[i].relation_name == nullptr || strcmp((*iter).table_name(), selects.orders[i].relation_name) == 0) && 
+          strcmp((*iter).field_name(), selects.orders[i].attribute_name) == 0) {
+            select_order_index[i] = index;
+            _ok = 1;
+            break;
+          }
+    }
+    if (!_ok) {
+      LOG_ERROR("Order input invalid.");
+      return RC::SCHEMA_FIELD_NOT_EXIST;
+    }
+  }
+  _selects_for_order = &selects;
+  LOG_INFO("Ready for sorting.");
+  sort(tuples_.begin(), tuples_.end(), do_select_order_cmp);
+  LOG_INFO("End of sorting.");
+  return RC::SUCCESS;
 }
 
 void TupleSet::print(std::ostream &os, bool is_multi_tables) const {

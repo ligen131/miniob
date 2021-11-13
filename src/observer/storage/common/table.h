@@ -52,7 +52,7 @@ public:
    */
   RC open(const char *meta_file, const char *base_dir);
   
-  RC insert_record(Trx *trx, int value_num, const Value *values);
+  RC insert_record(Trx *trx, int value_num, const Value *values,int data_num, const int *data_list_r);
   RC update_record(Trx *trx, const char *attribute_name, const Value *value, int condition_num, const Condition conditions[], int *updated_count);
   RC delete_record(Trx *trx, ConditionFilter *filter, int *deleted_count);
 
@@ -94,7 +94,7 @@ private:
   RC delete_entry_of_indexes(const char *record, const RID &rid, bool error_on_not_exists);
 private:
   RC init_record_handler(const char *base_dir);
-  RC make_record(int value_num, const Value *values, char * &record_out);
+  RC make_record(int value_num, const Value *values, char * &record_out ,int data_l ,int data_r);
 
 private:
   Index *find_index(const char *index_name) const;

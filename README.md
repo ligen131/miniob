@@ -13,8 +13,134 @@
 
 ## Log
 
-`Lastest Update: 2021-11-07 17:04`
+`Lastest Update: 2021-11-13 19:16`
 
+> v0.6.0-v0.7.0 2021-11-13 19:16
+>
+> @ligen 完成order-by，@Bunnycxk 完成insert。用例测试如下：
+>
+> ```sql
+> create table t(id int,name char(4),da date);
+> insert into t values(1,'lige','2021-10-30'),(11,'lige','2021-10-31'),(2,'aset','2000-2-29');
+> insert into t values(4,'deft','1976-2-29'),(5,'ghit','2035-1-1'),(6,'jklt','2021-6-30'),(233,'nowt','2021-10-31');
+> create table s(id int,name char(4),da date);
+> insert into s values(7,'lige','2021-10-30'),(8,'lige','2021-10-31'),(9,'aset','2000-2-29');
+> insert into s values(10,'deft','1976-2-29'),(11,'ghit','2035-1-1'),(12,'jklt','2021-6-30');
+> insert into s values(233,'nowt','2021-10-31');
+> insert into s values(100,'fail','2021-11-13'),(100,'FAIL','2021-11-31');
+> select * from t;
+> select * from s;
+> select * from t order by id;
+> select * from s,t where t.name=s.name order by t.da,s.da desc;
+> select * from s,t order by t.da desc,s.id desc;
+> drop table t;
+> drop table s;
+> exit;
+> ```
+>
+> 输出：
+>
+> ```
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > SUCCESS
+> miniob > FAILURE
+> miniob > id | name | da
+> 1 | lige | 2021-10-30
+> 11 | lige | 2021-10-31
+> 2 | aset | 2000-02-29
+> 4 | deft | 1976-02-29
+> 5 | ghit | 2035-01-01
+> 6 | jklt | 2021-06-30
+> 233 | nowt | 2021-10-31
+> miniob > id | name | da
+> 7 | lige | 2021-10-30
+> 8 | lige | 2021-10-31
+> 9 | aset | 2000-02-29
+> 10 | deft | 1976-02-29
+> 11 | ghit | 2035-01-01
+> 12 | jklt | 2021-06-30
+> 233 | nowt | 2021-10-31
+> miniob > id | name | da
+> 1 | lige | 2021-10-30
+> 2 | aset | 2000-02-29
+> 4 | deft | 1976-02-29
+> 5 | ghit | 2035-01-01
+> 6 | jklt | 2021-06-30
+> 11 | lige | 2021-10-31
+> 233 | nowt | 2021-10-31
+> miniob > s.id | s.name | s.da | t.id | t.name | t.da
+> 10 | deft | 1976-02-29 | 4 | deft | 1976-02-29
+> 9 | aset | 2000-02-29 | 2 | aset | 2000-02-29
+> 12 | jklt | 2021-06-30 | 6 | jklt | 2021-06-30
+> 8 | lige | 2021-10-31 | 1 | lige | 2021-10-30
+> 7 | lige | 2021-10-30 | 1 | lige | 2021-10-30
+> 8 | lige | 2021-10-31 | 11 | lige | 2021-10-31
+> 233 | nowt | 2021-10-31 | 233 | nowt | 2021-10-31
+> 7 | lige | 2021-10-30 | 11 | lige | 2021-10-31
+> 11 | ghit | 2035-01-01 | 5 | ghit | 2035-01-01
+> miniob > s.id | s.name | s.da | t.id | t.name | t.da
+> 233 | nowt | 2021-10-31 | 5 | ghit | 2035-01-01
+> 12 | jklt | 2021-06-30 | 5 | ghit | 2035-01-01
+> 11 | ghit | 2035-01-01 | 5 | ghit | 2035-01-01
+> 10 | deft | 1976-02-29 | 5 | ghit | 2035-01-01
+> 9 | aset | 2000-02-29 | 5 | ghit | 2035-01-01
+> 8 | lige | 2021-10-31 | 5 | ghit | 2035-01-01
+> 7 | lige | 2021-10-30 | 5 | ghit | 2035-01-01
+> 233 | nowt | 2021-10-31 | 233 | nowt | 2021-10-31
+> 233 | nowt | 2021-10-31 | 11 | lige | 2021-10-31
+> 12 | jklt | 2021-06-30 | 11 | lige | 2021-10-31
+> 12 | jklt | 2021-06-30 | 233 | nowt | 2021-10-31
+> 11 | ghit | 2035-01-01 | 233 | nowt | 2021-10-31
+> 11 | ghit | 2035-01-01 | 11 | lige | 2021-10-31
+> 10 | deft | 1976-02-29 | 233 | nowt | 2021-10-31
+> 10 | deft | 1976-02-29 | 11 | lige | 2021-10-31
+> 9 | aset | 2000-02-29 | 11 | lige | 2021-10-31
+> 9 | aset | 2000-02-29 | 233 | nowt | 2021-10-31
+> 8 | lige | 2021-10-31 | 11 | lige | 2021-10-31
+> 8 | lige | 2021-10-31 | 233 | nowt | 2021-10-31
+> 7 | lige | 2021-10-30 | 11 | lige | 2021-10-31
+> 7 | lige | 2021-10-30 | 233 | nowt | 2021-10-31
+> 233 | nowt | 2021-10-31 | 1 | lige | 2021-10-30
+> 12 | jklt | 2021-06-30 | 1 | lige | 2021-10-30
+> 11 | ghit | 2035-01-01 | 1 | lige | 2021-10-30
+> 10 | deft | 1976-02-29 | 1 | lige | 2021-10-30
+> 9 | aset | 2000-02-29 | 1 | lige | 2021-10-30
+> 8 | lige | 2021-10-31 | 1 | lige | 2021-10-30
+> 7 | lige | 2021-10-30 | 1 | lige | 2021-10-30
+> 233 | nowt | 2021-10-31 | 6 | jklt | 2021-06-30
+> 12 | jklt | 2021-06-30 | 6 | jklt | 2021-06-30
+> 11 | ghit | 2035-01-01 | 6 | jklt | 2021-06-30
+> 10 | deft | 1976-02-29 | 6 | jklt | 2021-06-30
+> 9 | aset | 2000-02-29 | 6 | jklt | 2021-06-30
+> 8 | lige | 2021-10-31 | 6 | jklt | 2021-06-30
+> 7 | lige | 2021-10-30 | 6 | jklt | 2021-06-30
+> 233 | nowt | 2021-10-31 | 2 | aset | 2000-02-29
+> 12 | jklt | 2021-06-30 | 2 | aset | 2000-02-29
+> 11 | ghit | 2035-01-01 | 2 | aset | 2000-02-29
+> 10 | deft | 1976-02-29 | 2 | aset | 2000-02-29
+> 9 | aset | 2000-02-29 | 2 | aset | 2000-02-29
+> 8 | lige | 2021-10-31 | 2 | aset | 2000-02-29
+> 7 | lige | 2021-10-30 | 2 | aset | 2000-02-29
+> 233 | nowt | 2021-10-31 | 4 | deft | 1976-02-29
+> 12 | jklt | 2021-06-30 | 4 | deft | 1976-02-29
+> 11 | ghit | 2035-01-01 | 4 | deft | 1976-02-29
+> 10 | deft | 1976-02-29 | 4 | deft | 1976-02-29
+> 9 | aset | 2000-02-29 | 4 | deft | 1976-02-29
+> 8 | lige | 2021-10-31 | 4 | deft | 1976-02-29
+> 7 | lige | 2021-10-30 | 4 | deft | 1976-02-29
+> miniob > SUCCESS
+> miniob > SUCCESS
+> ```
+>
+> *期望得分：90
+>
+> *第一次多人合作提交代码。
+>
 > v0.5.0 2021-11-7 16:27
 >
 > 完成aggregation-func。用例测试如下：

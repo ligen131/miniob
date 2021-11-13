@@ -16,7 +16,9 @@ typedef struct ParserContext {
   size_t condition_length;
   size_t from_length;
   size_t value_length;
+  size_t data_num;
   Value values[MAX_NUM];
+  int data_list_r[MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
   AggregationOp aggop;
@@ -82,6 +84,7 @@ ParserContext *get_context(yyscan_t scanner)
         INDEX
         SELECT
         DESC
+        ASC
         SHOW
         SYNC
         INSERT
@@ -120,6 +123,8 @@ ParserContext *get_context(yyscan_t scanner)
 		AGG_MAX
 		AGG_MIN
 		AGG_AVG
+        ORDER
+        BY
 
 %union {
   struct _Attr *attr;
@@ -300,7 +305,7 @@ ID_get:
 
 	
 insert:				/*insert   语句的语法解析树*/
-    INSERT INTO ID VALUES LBRACE value value_list RBRACE SEMICOLON 
+    INSERT INTO ID VALUES data data_list SEMICOLON 
 		{
 			// CONTEXT->values[CONTEXT->value_length++] = *$6;
 
@@ -310,11 +315,23 @@ insert:				/*insert   语句的语法解析树*/
 			// for(i = 0; i < CONTEXT->value_length; i++){
 			// 	CONTEXT->ssql->sstr.insertion.values[i] = CONTEXT->values[i];
       // }
-			inserts_init(&CONTEXT->ssql->sstr.insertion, $3, CONTEXT->values, CONTEXT->value_length);
+			inserts_init(&CONTEXT->ssql->sstr.insertion, $3, CONTEXT->values, CONTEXT->value_length,CONTEXT->data_num,CONTEXT->data_list_r) ;
 
       //临时变量清零
       CONTEXT->value_length=0;
-    }
+	  CONTEXT->data_num=0;
+    };
+data:
+	LBRACE value value_list RBRACE {
+		CONTEXT->data_list_r[CONTEXT->data_num++]=CONTEXT->value_length;
+	}
+	;
+data_list:
+	/* empty */
+    | COMMA data data_list  { 
+  		
+	  }
+	;
 
 value_list:
     /* empty */
@@ -360,7 +377,7 @@ update:			/*  update 语句的语法解析树*/
 		}
     ;
 select:				/*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list where SEMICOLON
+    SELECT select_attr FROM ID rel_list where order_by SEMICOLON
 		{
 			// CONTEXT->ssql->sstr.selection.relations[CONTEXT->from_length++]=$4;
 			selects_append_relation(&CONTEXT->ssql->sstr.selection, $4);
@@ -371,13 +388,56 @@ select:				/*  select 语句的语法解析树*/
 			// CONTEXT->ssql->sstr.selection.attr_num = CONTEXT->select_length;
 
 			//临时变量清零
-			CONTEXT->condition_length=0;
-			CONTEXT->from_length=0;
-			CONTEXT->select_length=0;
+			CONTEXT->condition_length = 0;
+			CONTEXT->from_length = 0;
+			CONTEXT->select_length = 0;
 			CONTEXT->value_length = 0;
 	}
 	;
+order_by:
+	/* empty */
+    | ORDER BY select_order select_order_list {
+      
+    }
+  ;
+select_order_list:
+	/* empty */
+	| COMMA select_order select_order_list {
 
+	}
+  ;
+select_order:
+	ID {
+			OrderBy order;
+			orders_init(&order, NULL, $1, ORDER_ASC);
+			selects_append_orders(&CONTEXT->ssql->sstr.selection, &order);
+	}
+	| ID ASC {
+			OrderBy order;
+			orders_init(&order, NULL, $1, ORDER_ASC);
+			selects_append_orders(&CONTEXT->ssql->sstr.selection, &order);
+	}
+	| ID DESC {
+			OrderBy order;
+			orders_init(&order, NULL, $1, ORDER_DESC);
+			selects_append_orders(&CONTEXT->ssql->sstr.selection, &order);
+	}
+	| ID DOT ID {
+			OrderBy order;
+			orders_init(&order, $1, $3, ORDER_ASC);
+			selects_append_orders(&CONTEXT->ssql->sstr.selection, &order);
+	}
+	| ID DOT ID ASC {
+			OrderBy order;
+			orders_init(&order, $1, $3, ORDER_ASC);
+			selects_append_orders(&CONTEXT->ssql->sstr.selection, &order);
+	}
+	| ID DOT ID DESC {
+			OrderBy order;
+			orders_init(&order, $1, $3, ORDER_DESC);
+			selects_append_orders(&CONTEXT->ssql->sstr.selection, &order);
+	}
+  ;
 select_attr:
     aggOp aggregation {
 

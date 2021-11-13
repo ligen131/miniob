@@ -137,6 +137,8 @@ public:
   const Tuple &get(int index) const;
   const std::vector<Tuple> &tuples() const;
 
+  RC _sort(const Selects &selects) ;
+
   void print(std::ostream &os, bool is_multi_tables) const;
 public:
   const TupleSchema &schema() const {

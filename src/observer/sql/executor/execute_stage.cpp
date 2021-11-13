@@ -657,9 +657,19 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
     // do_multi_tables_select_DFS_tuple.clear();
     do_multi_tables_select_DFS(0, multi_tables_tuple_set);
     LOG_INFO("DFS end.");
+    rc = multi_tables_tuple_set._sort(selects);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Fail to do order.");
+      return rc;
+    }
     multi_tables_tuple_set.print(ss, true);
   } else {
     // 当前只查询一张表，直接返回结果即可
+    rc = tuple_sets_.front()._sort(selects);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Fail to do order.");
+      return rc;
+    }
     tuple_sets_.front().print(ss, false);
   }
 
