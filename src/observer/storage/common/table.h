@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #define __OBSERVER_STORAGE_COMMON_TABLE_H__
 
 #include "storage/common/table_meta.h"
+#include <map>
 
 class DiskBufferPool;
 class RecordFileHandler;
@@ -58,7 +59,7 @@ public:
 
   RC scan_record(Trx *trx, ConditionFilter *filter, int limit, void *context, void (*record_reader)(const char *data, void *context));
 
-  RC create_index(Trx *trx, const char *index_name, const char *attribute_name);
+  RC create_index(Trx *trx, const char *index_name, const char *attribute_name[], size_t attr_num);
 
 public:
   const char *name() const;
@@ -106,6 +107,7 @@ private:
   int                     file_id_;
   RecordFileHandler *     record_handler_;   /// 记录操作
   std::vector<Index *>    indexes_;
+  std::map<std::vector<const char*>,bool> _indexes_map;
 };
 
 #endif // __OBSERVER_STORAGE_COMMON_TABLE_H__

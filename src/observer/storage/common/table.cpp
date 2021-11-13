@@ -556,22 +556,33 @@ static RC insert_index_record_reader_adapter(Record *record, void *context) {
   return inserter.insert_index(record);
 }
 
-RC Table::create_index(Trx *trx, const char *index_name, const char *attribute_name) {
-  if (index_name == nullptr || common::is_blank(index_name) ||
-      attribute_name == nullptr || common::is_blank(attribute_name)) {
-    return RC::INVALID_ARGUMENT;
-  }
-  if (table_meta_.index(index_name) != nullptr ||
-      table_meta_.find_index_by_field((attribute_name))) {
-    return RC::SCHEMA_INDEX_EXIST;
-  }
 
-  const FieldMeta *field_meta = table_meta_.field(attribute_name);
-  if (!field_meta) {
-    return RC::SCHEMA_FIELD_MISSING;
+RC Table::create_index(Trx *trx, const char *index_name, const char *attribute_name[], size_t attr_num) {
+  const FieldMeta *field_meta;
+  std::vector<const char*>_ve_for_index;
+  for (size_t i = 0; i < attr_num; ++i) {
+    if (index_name == nullptr || common::is_blank(index_name) ||
+        attribute_name == nullptr || common::is_blank(attribute_name[i])) {
+      return RC::INVALID_ARGUMENT;
+    }
+    field_meta = table_meta_.field(attribute_name[i]);
+    if (!field_meta) {
+      return RC::SCHEMA_FIELD_MISSING;
+    }
+    _ve_for_index.push_back(attribute_name[i]);
   }
-
+  if (_indexes_map[_ve_for_index]) return RC::SCHEMA_INDEX_EXIST;
+  _indexes_map[_ve_for_index] = true;
+  
   return RC::SUCCESS; // hhh
+  for (size_t i = 0; i < attr_num; ++i) {
+    if (table_meta_.index(index_name) != nullptr ||
+        table_meta_.find_index_by_field((attribute_name[0]))) {
+      return RC::SCHEMA_INDEX_EXIST;
+    }
+  }
+
+
 
   IndexMeta new_index_meta;
   RC rc = new_index_meta.init(index_name, *field_meta);

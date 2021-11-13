@@ -134,21 +134,6 @@ void DefaultStorageStage::cleanup() {
   LOG_TRACE("Exit");
 }
 
-#include <map>
-#include <string.h>
-struct multi_index {
-  size_t attr_num;
-  const char *attr_name[20];
-};
-bool operator<(const multi_index &a, const multi_index &b) {
-  if (a.attr_num != b.attr_num) return a.attr_num < b.attr_num;
-  for (size_t i = 0; i < a.attr_num; ++i) {
-    int result = strcmp(a.attr_name[i], b.attr_name[i]);
-    if(result != 0) return result < 0;
-  }
-  return false;
-}
-std::map<multi_index,bool>_Multi_index_Map;
 void DefaultStorageStage::handle_event(StageEvent *event) {
   LOG_TRACE("Enter\n");
   TimerStat timerStat(*query_metric_);
@@ -216,19 +201,8 @@ void DefaultStorageStage::handle_event(StageEvent *event) {
     break;
   case SCF_CREATE_INDEX: {
       const CreateIndex &create_index = sql->sstr.create_index;
-      multi_index _multi_index;
-      _multi_index.attr_num = create_index.attr_num;
-      for (size_t i = 0; i < create_index.attr_num; ++i) {
-        _multi_index.attr_name[i] = create_index.attribute_name[i];
-        LOG_INFO("%d %s", i, create_index.attribute_name[i]);
-      }
-      if (_Multi_index_Map[_multi_index]) rc = RC::GENERIC_ERROR;
-      else { 
-        rc = RC::SUCCESS;
-        _Multi_index_Map[_multi_index] = true;
-      }
-      // rc = handler_->create_index(current_trx, current_db, create_index.relation_name, 
-      //                             create_index.index_name, create_index.attribute_name[0]);
+      rc = handler_->create_index(current_trx, current_db, create_index.relation_name, 
+                                  create_index.index_name, (const char **)create_index.attribute_name, create_index.attr_num);
       snprintf(response, sizeof(response), "%s\n", rc == RC::SUCCESS ? "SUCCESS" : "FAILURE");
     }
     break;
