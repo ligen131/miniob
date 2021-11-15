@@ -23,6 +23,7 @@ RC parse(char *st, Query *sqln);
 extern "C" {
 #endif // __cplusplus
 void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const char *attribute_name) {
+  LOG_INFO("relation attr init %s %s",relation_name, attribute_name);
   if (relation_name != nullptr) {
     relation_attr->relation_name = strdup(relation_name);
   } else {
@@ -30,6 +31,7 @@ void relation_attr_init(RelAttr *relation_attr, const char *relation_name, const
   }
   relation_attr->attribute_name = strdup(attribute_name);
   relation_attr->agg = NO_AGOP;
+  LOG_INFO("end relation attr init %s %s",relation_name, attribute_name);
 }
 void relation_attr_init_(RelAttr *relation_attr, const char *relation_name, const char *attribute_name, AggregationOp AggOp) {
   relation_attr_init(relation_attr, relation_name, attribute_name);
@@ -59,6 +61,20 @@ void orders_destroy(OrderBy *order) {
   free(order->attribute_name);
   order->relation_name = nullptr;
   order->attribute_name = nullptr;
+}
+void groups_init(GroupBy *group, const char *relation_name, const char *attribute_name) {
+  if (relation_name != nullptr) {
+    group->relation_name = strdup(relation_name);
+  } else {
+    group->relation_name = nullptr;
+  }
+  group->attribute_name = strdup(attribute_name);
+}
+void groups_destroy(GroupBy *group) {
+  free(group->relation_name);
+  free(group->attribute_name);
+  group->relation_name = nullptr;
+  group->attribute_name = nullptr;
 }
 
 void value_init_integer(Value *value, int v) {
@@ -183,6 +199,9 @@ void selects_append_conditions(Selects *selects, Condition conditions[], size_t 
 void selects_append_orders(Selects *selects, OrderBy *orders) {
   selects->orders[selects->order_num++] = *orders;
 }
+void selects_append_groups(Selects *selects, GroupBy *groups) {
+  selects->groups[selects->group_num++] = *groups;
+}
 
 void selects_destroy(Selects *selects) {
   for (size_t i = 0; i < selects->attr_num; i++) {
@@ -201,10 +220,15 @@ void selects_destroy(Selects *selects) {
   }
   selects->condition_num = 0;
 
-  for( size_t i = 0; i < selects->order_num; i++) {
+  for (size_t i = 0; i < selects->order_num; i++) {
     orders_destroy(&selects->orders[i]);
   }
   selects->order_num = 0;
+
+  for (size_t i = 0; i < selects->group_num; i++) {
+    groups_destroy(&selects->groups[i]);
+  }
+  selects->group_num = 0;
 }
 
 void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t value_num,size_t data_num,int data_list_r[]) {

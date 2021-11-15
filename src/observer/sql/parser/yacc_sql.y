@@ -127,6 +127,7 @@ ParserContext *get_context(yyscan_t scanner)
 		AGG_MIN
 		AGG_AVG
         ORDER
+		GROUP
         BY
 
 %union {
@@ -388,7 +389,7 @@ update:			/*  update 语句的语法解析树*/
 		}
     ;
 select:				/*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list where order_by SEMICOLON
+    SELECT select_attr FROM ID rel_list where order_by group_by SEMICOLON
 		{
 			// CONTEXT->ssql->sstr.selection.relations[CONTEXT->from_length++]=$4;
 			selects_append_relation(&CONTEXT->ssql->sstr.selection, $4);
@@ -447,6 +448,30 @@ select_order:
 			OrderBy order;
 			orders_init(&order, $1, $3, ORDER_DESC);
 			selects_append_orders(&CONTEXT->ssql->sstr.selection, &order);
+	}
+  ;
+group_by:
+	/* empty */
+	| GROUP BY select_group select_group_list {
+
+	}
+  ;
+select_group_list:
+	/* empty */
+	| COMMA select_group select_group_list {
+
+	}
+  ;
+select_group:
+	ID {
+			GroupBy group;
+			groups_init(&group, NULL, $1);
+			selects_append_groups(&CONTEXT->ssql->sstr.selection, &group);
+	}
+	| ID DOT ID {
+			GroupBy group;
+			groups_init(&group, $1, $3);
+			selects_append_groups(&CONTEXT->ssql->sstr.selection, &group);
 	}
   ;
 select_attr:

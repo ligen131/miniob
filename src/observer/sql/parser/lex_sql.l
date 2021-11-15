@@ -59,6 +59,7 @@ QUOTE            [\'\"]
 [Aa][Nn][Dd]                             RETURN_TOKEN(AND);
 [Ii][Nn][Ss][Ee][rR][tT]                 RETURN_TOKEN(INSERT);
 [Oo][Rr][Dd][Ee][Rr]					 RETURN_TOKEN(ORDER);
+[Gg][Rr][Oo][Uu][Pp]					 RETURN_TOKEN(GROUP);
 [Bb][Yy]								 RETURN_TOKEN(BY);
 [Ii][Nn][Tt][Oo]					 	             RETURN_TOKEN(INTO);
 [Vv][Aa][Ll][Uu][Ee][Ss]                 RETURN_TOKEN(VALUES);

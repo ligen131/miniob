@@ -62,11 +62,15 @@ private:
 
 class TupleField {
 public:
-  TupleField(AttrType type, const char *table_name, const char *field_name) :
-          type_(type), table_name_(table_name), field_name_(field_name){
+  TupleField(AttrType type, const char *table_name, const char *field_name, AggregationOp agg) :
+          type_(type), table_name_(table_name), field_name_(field_name), agg_(agg){
   }
 
-  AttrType  type() const{
+  AggregationOp agg() const {
+    return agg_;
+  }
+
+  AttrType  type() const {
     return type_;
   }
 
@@ -82,6 +86,7 @@ private:
   AttrType  type_;
   std::string table_name_;
   std::string field_name_;
+  AggregationOp agg_;
 };
 
 class TupleSchema {
@@ -90,7 +95,9 @@ public:
   ~TupleSchema() = default;
 
   void add(AttrType type, const char *table_name, const char *field_name);
+  void add(AttrType type, const char *table_name, const char *field_name, AggregationOp agg);
   void add_if_not_exists(AttrType type, const char *table_name, const char *field_name);
+  void add_if_not_exists(AttrType type, const char *table_name, const char *field_name, AggregationOp agg);
   // void merge(const TupleSchema &other);
   void append(const TupleSchema &other);
 
@@ -109,7 +116,7 @@ public:
 
   void print(std::ostream &os, bool is_multi_tables) const;
 public:
-  static void from_table(const Table *table, TupleSchema &schema);
+  static void from_table(const Table *table, TupleSchema &schema, AggregationOp agg);
 private:
   std::vector<TupleField> fields_;
 };
@@ -136,6 +143,10 @@ public:
   int size() const;
   const Tuple &get(int index) const;
   const std::vector<Tuple> &tuples() const;
+  
+  void replace_tuple(size_t index, Tuple &tuple) {
+    tuples_[index] = std::move(tuple);
+  }
 
   RC _sort(const Selects &selects) ;
 

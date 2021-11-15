@@ -44,6 +44,11 @@ typedef struct {
   char *attribute_name;  // attribute name              属性名
 } OrderBy;
 
+typedef struct {
+  char *relation_name;
+  char *attribute_name;
+} GroupBy;
+
 //属性结构体
 typedef struct {
   AggregationOp agg;
@@ -92,6 +97,8 @@ typedef struct {
   Condition conditions[MAX_NUM];    // conditions in Where clause
   size_t    order_num;
   OrderBy   orders[MAX_NUM];
+  size_t    group_num;
+  GroupBy   groups[MAX_NUM];
 } Selects;
 
 // struct of insert
@@ -210,6 +217,8 @@ void relation_attr_destroy(RelAttr *relation_attr);
 
 void orders_init(OrderBy *order, const char *relation_name, const char *attribute_name, OrderOp orderp);
 void orders_destroy(OrderBy *order);
+void groups_init(GroupBy *group, const char *relation_name, const char *attribute_name);
+void groups_destroy(GroupBy*group);
 
 void value_init_integer(Value *value, int v);
 void value_init_float(Value *value, float v);
@@ -229,6 +238,7 @@ void selects_append_attribute(Selects *selects, RelAttr *rel_attr);
 void selects_append_relation(Selects *selects, const char *relation_name);
 void selects_append_conditions(Selects *selects, Condition conditions[], size_t condition_num);
 void selects_append_orders(Selects *selects, OrderBy *orders);
+void selects_append_groups(Selects *selects, GroupBy *groups);
 void selects_destroy(Selects *selects);
 
 void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t value_num ,size_t data_num ,int data_list_r[]);

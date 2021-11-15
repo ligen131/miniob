@@ -263,7 +263,7 @@ std::vector<TupleSet> tuple_sets_;
 std::vector<CompOp> Multi_tables_compop_[MAX_NUM];
 // std::vector<CompOp> Empty_compop;
 size_t total_table;
-bool tuple_filter[MAX_NUM][MAX_NUM];
+size_t tuple_filter[MAX_NUM][MAX_NUM];
 int DFS_tree[MAX_NUM];
 TupleSet multi_tables_tuple_set;
 bool multi_tables_filter(int cmp_result,CompOp comp_op_) {
@@ -295,18 +295,24 @@ RC do_multi_tables_select_DFS(size_t now, TupleSet &multi_tables_tuple_set) {
   if (now == total_table){
     LOG_INFO("Find one acceptable answer. %d %d",DFS_tree[0], DFS_tree[1]);
     Tuple tuple;
-    for (size_t i = 0; i < total_table; ++i) {
-      // std::vector<std::shared_ptr<TupleValue>> value_;
-      // value_.emplace_back(tuple_sets_[i].tuples()[DFS_tree[i]].values());
-      // size_t sz = value_.size();
-      // for (size_t j = 0; j < sz; ++j) {
-      //   if(tuple_filter[i][j]) tuple.add(value_[j]);
-      // }
-      int j = 0;
-      for (std::vector<std::shared_ptr<TupleValue>>::const_iterator iter = tuple_sets_[i].tuples()[DFS_tree[i]].values().begin();
-            iter != tuple_sets_[i].tuples()[DFS_tree[i]].values().end(); ++iter, ++j) {
-              if(tuple_filter[i][j]) tuple.add((*iter));
+    size_t now = 1;
+    while (now <= multi_tables_tuple_set.schema().fields().size()){
+      for (size_t i = 0; i < total_table; ++i) {
+        // std::vector<std::shared_ptr<TupleValue>> value_;
+        // value_.emplace_back(tuple_sets_[i].tuples()[DFS_tree[i]].values());
+        // size_t sz = value_.size();
+        // for (size_t j = 0; j < sz; ++j) {
+        //   if(tuple_filter[i][j]) tuple.add(value_[j]);
+        // }
+          int j = 0;
+          for (std::vector<std::shared_ptr<TupleValue>>::const_iterator iter = tuple_sets_[i].tuples()[DFS_tree[i]].values().begin();
+                iter != tuple_sets_[i].tuples()[DFS_tree[i]].values().end(); ++iter, ++j) {
+            if(tuple_filter[i][j] == now) {
+              tuple.add((*iter));
+              ++now;
             }
+          }
+        }
     }
     multi_tables_tuple_set.add(std::move(tuple));
     return RC::SUCCESS;
@@ -340,7 +346,17 @@ RC do_multi_tables_select_DFS(size_t now, TupleSet &multi_tables_tuple_set) {
   return RC::SUCCESS;
 }
 
-static RC schema_add_field(Table *table, const char *field_name, TupleSchema &schema) ;
+
+static RC schema_add_field(Table *table, const char *field_name, TupleSchema &schema, AggregationOp agg) {
+  const FieldMeta *field_meta = table->table_meta().field(field_name);
+  if (nullptr == field_meta) {
+    LOG_WARN("No such field. %s.%s", table->name(), field_name);
+    return RC::SCHEMA_FIELD_MISSING;
+  }
+
+  schema.add_if_not_exists(field_meta->type(), table->name(), field_meta->name(), agg);
+  return RC::SUCCESS;
+}
 
 RC multi_tables_select_init(Trx *trx, Session *session, const Selects &selects, const char *db, TupleSet &multi_tables_tuple_set) {
   LOG_INFO("Start to init multi tables.");
@@ -356,6 +372,7 @@ RC multi_tables_select_init(Trx *trx, Session *session, const Selects &selects, 
   // 取出所有table
   TupleSchema schema;
   total_table = 0;
+  int tuple_filter_index = 0;
   for (int i = selects.relation_num - 1;i >= 0 ; --i){
     const char *table_name = selects.relations[i];
     Table * table = DefaultHandler::get_default().find_table(db, table_name);
@@ -372,9 +389,9 @@ RC multi_tables_select_init(Trx *trx, Session *session, const Selects &selects, 
       Multi_tables_compop_[total_table].clear();
       if(selects.attr_num == 1 && nullptr == selects.attributes[0].relation_name && strcmp("*", selects.attributes[0].attribute_name) == 0) {
         // 列出这张表所有字段
-        TupleSchema::from_table(table, schema);
+        TupleSchema::from_table(table, schema, selects.attributes[0].agg);
         for (int j = 1; j < table->table_meta().field_num(); ++j) {
-          tuple_filter[total_table - 1][j - 1] = 1;
+          tuple_filter[total_table - 1][j - 1] = ++tuple_filter_index;
         }
       }
     }
@@ -388,16 +405,16 @@ RC multi_tables_select_init(Trx *trx, Session *session, const Selects &selects, 
       num = Table_Map[table];
       if (0 == strcmp("*", attr.attribute_name)) {
         // 列出这张表所有字段
-        TupleSchema::from_table(table, schema);
+        TupleSchema::from_table(table, schema, attr.agg);
         int sz = table->table_meta().field_num();
         for (int j = 1; j < sz; ++j) {
-          tuple_filter[num - 1][j - 1] = 1;
+          tuple_filter[num - 1][j - 1] = ++tuple_filter_index;
         }
         break; // 没有校验，给出* 之后，再写字段的错误
       } else {
         // 列出这张表相关字段
-        rc = schema_add_field(table, attr.attribute_name, schema);
-        tuple_filter[num - 1][table->real_table_meta().get_index_by_field(attr.attribute_name) - 1] = 1;
+        rc = schema_add_field(table, attr.attribute_name, schema, attr.agg);
+        tuple_filter[num - 1][table->real_table_meta().get_index_by_field(attr.attribute_name) - 1] = ++tuple_filter_index;
         if (rc != RC::SUCCESS) {
           return rc;
         }
@@ -575,9 +592,135 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
   return RC::SUCCESS;
 }
 
+int group_by_index[MAX_NUM], group_by_count[220][MAX_NUM];
+RC do_select_group_by(TupleSet &tupleset, const Selects &selects, std::ostream &os) {
+  LOG_INFO("Begin to do group.");
+  bool _had_agg = 0;
+  for (size_t i = 0; i < selects.attr_num; ++i) {
+    if (selects.attributes[i].agg != NO_AGOP) {
+      if (AGG_INVALID == selects.attributes[i].agg){
+        LOG_ERROR("Agg func invalid.");
+        return RC::GENERIC_ERROR;
+      }
+      _had_agg = 1;
+      // break;
+    }
+  }
+  if (selects.group_num == 0 && _had_agg == 0) return RC::SUCCESS;
+
+  TupleSet _base_tupleset = std::move(tupleset);
+  tupleset.clear();
+  const TupleSchema &_schema = _base_tupleset.schema();
+  tupleset.set_schema(_schema);
+
+  for (size_t i = 0; i < selects.group_num; ++i) {
+    group_by_index[i] = -1;
+    int index = 0;
+    for (std::vector<TupleField>::const_iterator iter = _schema.fields().begin(); iter != _schema.fields().end(); ++iter, ++index) {
+      if ((selects.groups[i].relation_name == nullptr || strcmp(selects.groups[i].relation_name, (*iter).table_name()) == 0) &&
+           strcmp(selects.groups[i].attribute_name, (*iter).field_name()) == 0) {
+        group_by_index[i] = index;
+        break;
+      }
+    }
+    if(group_by_index[i] == -1){
+      LOG_ERROR("Group by input invalid.");
+      return RC::GENERIC_ERROR;
+    }
+  }
+
+  for (std::vector<Tuple>::const_iterator iter = _base_tupleset.tuples().begin(); iter != _base_tupleset.tuples().end(); ++iter) {
+    int _ok = -1, index = 0;
+    for (std::vector<Tuple>::const_iterator jter = tupleset.tuples().begin(); jter != tupleset.tuples().end(); ++jter, ++index) {
+      bool __ok = 0;
+      for (size_t i = 0; i < selects.group_num; ++i) {
+        if((*iter).values()[group_by_index[i]].get()->compare(*((*jter).values()[group_by_index[i]].get())) != 0) {
+          __ok = 0;
+          break;
+        } else __ok = 1;
+      }
+      if (__ok) {
+        _ok = index;
+        break;
+      }
+    }
+    
+    Tuple tuple;
+    if (_ok != -1) {
+      for (int i = selects.attr_num - 1, index = 0; i >= 0; --i, ++index) {
+        switch (selects.attributes[i].agg) {
+          case NO_AGOP: {
+            tuple.add((*iter).values()[index]);
+          }
+          break;
+          case MAX: {
+            int result = (*iter).values()[index].get()->compare(*(tupleset.tuples()[_ok].values()[index].get()));
+            if (result > 0) {
+              tuple.add((*iter).values()[index]);
+            } else {
+              tuple.add(tupleset.tuples()[_ok].values()[index]);
+            }
+          }
+          break;
+          case MIN: {
+            int result = (*iter).values()[index].get()->compare(*(tupleset.tuples()[_ok].values()[index].get()));
+            if (result < 0) {
+              tuple.add((*iter).values()[index]);
+            } else {
+              tuple.add(tupleset.tuples()[_ok].values()[index]);
+            }
+          }
+          break;
+          case COUNT: {
+            tuple.add(tupleset.tuples()[_ok].values()[index].get()->get_() + 1);
+          }
+          break;
+          case AVG: {
+            tuple.add(tupleset.tuples()[_ok].values()[index].get()->get_() + (*iter).values()[index].get()->get_());
+            group_by_count[_ok][index]++;
+          }
+          break;
+          default: {
+
+          }
+          break;
+        }
+      }
+      tupleset.replace_tuple(_ok, tuple);
+    } else {
+      for (int i = selects.attr_num - 1, index = 0; i >= 0; --i, ++index) {
+        if (selects.attributes[i].agg == COUNT) {
+          tuple.add(1);
+        } else {
+          tuple.add((*iter).values()[index]);
+        }
+        if (selects.attributes[i].agg == AVG) {
+          group_by_count[tupleset.size()][index] = 1;
+        }
+      }
+      tupleset.add(std::move(tuple));
+    }
+  }
+  int ind = 0;
+  for (std::vector<Tuple>::const_iterator iter = tupleset.tuples().begin(); iter != tupleset.tuples().end(); ++iter, ++ind) {
+    Tuple tuple;
+    for (int i = selects.attr_num - 1, index = 0; i >= 0; --i, ++index) {
+      if (selects.attributes[i].agg == AVG) {
+        tuple.add(((*iter).values()[index].get()->get_()) / (float)(1.0 * group_by_count[ind][index]));
+      } else {
+        tuple.add((*iter).values()[index]);
+      }
+    }
+    tupleset.replace_tuple(ind, tuple);
+  }
+  LOG_INFO("End of group.");
+  return RC::SUCCESS;
+}
+
 // 这里没有对输入的某些信息做合法性校验，比如查询的列名、where条件中的列名等，没有做必要的合法性校验
 // 需要补充上这一部分. 校验部分也可以放在resolve，不过跟execution放一起也没有关系
 RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_event) {
+  LOG_INFO("Begin to do select.");
 
   RC rc = RC::SUCCESS;
   Session *session = session_event->get_client()->session;
@@ -623,7 +766,7 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
   }
 
   std::stringstream ss;
-  if (selects.attributes[0].agg != NO_AGOP) {
+  if (selects.attributes[selects.attr_num - 1].agg != NO_AGOP) {
     rc = do_aggregation_func_select(tuple_sets_.front(), selects, ss);
     if(rc != RC::SUCCESS) {
       LOG_ERROR("Failed to do aggregation function select.");
@@ -662,12 +805,22 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
       LOG_ERROR("Fail to do order.");
       return rc;
     }
+    rc = do_select_group_by(multi_tables_tuple_set, selects, ss);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Fail to do group.");
+      return rc;
+    }
     multi_tables_tuple_set.print(ss, true);
   } else {
     // 当前只查询一张表，直接返回结果即可
     rc = tuple_sets_.front()._sort(selects);
     if (rc != RC::SUCCESS) {
       LOG_ERROR("Fail to do order.");
+      return rc;
+    }
+    rc = do_select_group_by(tuple_sets_.front(), selects, ss);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Fail to do group.");
       return rc;
     }
     tuple_sets_.front().print(ss, false);
@@ -689,17 +842,6 @@ bool match_table(const Selects &selects, const char *table_name_in_condition, co
   return selects.relation_num == 1;
 }
 
-static RC schema_add_field(Table *table, const char *field_name, TupleSchema &schema) {
-  const FieldMeta *field_meta = table->table_meta().field(field_name);
-  if (nullptr == field_meta) {
-    LOG_WARN("No such field. %s.%s", table->name(), field_name);
-    return RC::SCHEMA_FIELD_MISSING;
-  }
-
-  schema.add_if_not_exists(field_meta->type(), table->name(), field_meta->name());
-  return RC::SUCCESS;
-}
-
 // 把所有的表和只跟这张表关联的condition都拿出来，生成最底层的select 执行节点
 RC create_selection_executor(Trx *trx, const Selects &selects, const char *db, const char *table_name, SelectExeNode &select_node) {
   // 列出跟这张表关联的Attr
@@ -711,18 +853,18 @@ RC create_selection_executor(Trx *trx, const Selects &selects, const char *db, c
   }
 
   if (selects.relation_num > 1) {
-    TupleSchema::from_table(table, schema);
+    TupleSchema::from_table(table, schema, NO_AGOP);
   }else 
   for (int i = selects.attr_num - 1; i >= 0; i--) {
     const RelAttr &attr = selects.attributes[i];
     if (nullptr == attr.relation_name || 0 == strcmp(table_name, attr.relation_name)) {
       if (0 == strcmp("*", attr.attribute_name) || (attr.attribute_name[0] >= '0' && attr.attribute_name[0] <= '9')) {
         // 列出这张表所有字段
-        TupleSchema::from_table(table, schema);
+        TupleSchema::from_table(table, schema, attr.agg);
         // break; // 没有校验，给出* 之后，再写字段的错误
       } else {
         // 列出这张表相关字段
-        RC rc = schema_add_field(table, attr.attribute_name, schema);
+        RC rc = schema_add_field(table, attr.attribute_name, schema, attr.agg);
         if (rc != RC::SUCCESS) {
           return rc;
         }
