@@ -700,7 +700,7 @@ RC Table::update_record(Trx *trx, Record *record, const FieldMeta *field_meta, c
   RC rc = RC::SUCCESS;
   Record New_record = *record;
   
-  switch (value->type) {
+  switch (field_meta->type()) { // for text to change.
     case DATES: 
     case INTS: {
       int v = *(int*)(value->data);
@@ -719,6 +719,20 @@ RC Table::update_record(Trx *trx, Record *record, const FieldMeta *field_meta, c
       memcpy(New_record.data + field_meta->offset(), s, field_meta->len());
     }
     break;
+    case TEXTS: {
+      char *s;
+      if (strlen((char*)(value->data)) > 4096) {
+        s = (char*)malloc(sizeof(char) * 4097);
+        memcpy(s, value->data, 4096);
+        s[4097] = 0;
+      } else {
+        s = (char*)malloc(sizeof(char) * (strlen((char*)(value->data)) + 1));
+        s = (char*)(value->data);
+        s[strlen((char*)(value->data))] = 0;
+      }
+      int result = insert_text(s);
+      memcpy(New_record.data + field_meta->offset(), &result, field_meta->len());
+    }
     default: {
       LOG_PANIC("Unsupported field type. type=%d", field_meta->type());
     }
@@ -764,7 +778,7 @@ RC Table::update_record(Trx *trx, const char *attribute_name, const Value *value
     return RC::SCHEMA_FIELD_MISSING;
   }
 
-  if(value->type != field_meta->type()){
+  if(value->type != field_meta->type() && !(TEXTS == field_meta->type() && CHARS == value->type)){
     LOG_ERROR("SCHEMA_FIELD_TYPE_MISMATCH. Value type = %d, field type = %d.", value->type, field_meta->type());
     return RC::SCHEMA_FIELD_TYPE_MISMATCH;
   }
