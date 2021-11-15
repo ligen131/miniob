@@ -416,7 +416,7 @@ select_inner_join:
 	;
 inner_join_list:
 	/* empty */
-	| COMMA INNER JOIN inner_join inner_join_list {
+	| INNER JOIN inner_join inner_join_list {
 
 		}
 	;
