@@ -475,9 +475,39 @@ select_group:
 	}
   ;
 select_attr:
-    aggregation attr_list {
+    // aggregation attr_list {
 
-    }
+    // }
+	aggOp LBRACE STAR RBRACE attr_list {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| aggOp LBRACE NUMBER RBRACE attr_list {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, int_to_char_array($3), CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| aggOp LBRACE ID RBRACE attr_list {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, $3, CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| aggOp LBRACE ID DOT ID RBRACE attr_list {
+			RelAttr attr;
+			relation_attr_init_(&attr, $3, $5, CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| aggOp LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE attr_list {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| aggOp LBRACE RBRACE attr_list {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
     | STAR {  
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, "*");
@@ -496,9 +526,39 @@ select_attr:
     ;
 attr_list:
     /* empty */
-    | COMMA aggregation attr_list {
+    // | COMMA aggregation attr_list {
 
-    }
+    // }
+	| COMMA aggOp LBRACE STAR RBRACE attr_list {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| COMMA aggOp LBRACE NUMBER RBRACE attr_list {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, int_to_char_array($4), CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| COMMA aggOp LBRACE ID RBRACE attr_list {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, $4, CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| COMMA aggOp LBRACE ID DOT ID RBRACE attr_list {
+			RelAttr attr;
+			relation_attr_init_(&attr, $4, $6, CONTEXT->aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| COMMA aggOp LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE attr_list {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
+	| COMMA aggOp LBRACE RBRACE attr_list {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+		}
     | COMMA ID attr_list {
 			RelAttr attr;
 			relation_attr_init(&attr, NULL, $2);
@@ -539,38 +599,38 @@ aggr_attr_list:
   	;
 
 
-aggregation:
-	aggOp LBRACE STAR RBRACE {
-			RelAttr attr;
-			relation_attr_init_(&attr, NULL, "*", CONTEXT->aggop);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-		}
-	| aggOp LBRACE NUMBER RBRACE {
-			RelAttr attr;
-			relation_attr_init_(&attr, NULL, int_to_char_array($3), CONTEXT->aggop);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-		}
-	| aggOp LBRACE ID RBRACE {
-			RelAttr attr;
-			relation_attr_init_(&attr, NULL, $3, CONTEXT->aggop);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-		}
-	| aggOp LBRACE ID DOT ID RBRACE {
-			RelAttr attr;
-			relation_attr_init_(&attr, $3, $5, CONTEXT->aggop);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-		}
-	| aggOp LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE {
-			RelAttr attr;
-			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-		}
-	| aggOp LBRACE RBRACE {
-			RelAttr attr;
-			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
-			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-		}
-    ;
+// aggregation:
+// 	aggOp LBRACE STAR RBRACE {
+// 			RelAttr attr;
+// 			relation_attr_init_(&attr, NULL, "*", CONTEXT->aggop);
+// 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+// 		}
+// 	| aggOp LBRACE NUMBER RBRACE {
+// 			RelAttr attr;
+// 			relation_attr_init_(&attr, NULL, int_to_char_array($3), CONTEXT->aggop);
+// 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+// 		}
+// 	| aggOp LBRACE ID RBRACE {
+// 			RelAttr attr;
+// 			relation_attr_init_(&attr, NULL, $3, CONTEXT->aggop);
+// 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+// 		}
+// 	| aggOp LBRACE ID DOT ID RBRACE {
+// 			RelAttr attr;
+// 			relation_attr_init_(&attr, $3, $5, CONTEXT->aggop);
+// 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+// 		}
+// 	| aggOp LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE {
+// 			RelAttr attr;
+// 			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
+// 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+// 		}
+// 	| aggOp LBRACE RBRACE {
+// 			RelAttr attr;
+// 			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
+// 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
+// 		}
+//     ;
 rel_list:
     /* empty */
     | COMMA ID rel_list {	
