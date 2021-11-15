@@ -706,7 +706,7 @@ RC do_select_group_by(TupleSet &tupleset, const Selects &selects, std::ostream &
     Tuple tuple;
     for (int i = 0, index = 0; i < selects.attr_num; ++i, ++index) {
       if (selects.attributes[i].agg == AVG) {
-        tuple.add(((*iter).values()[index].get()->get_()) / (float)(1.0 * group_by_count[ind][index]));
+        tuple.add(((*iter).values()[index].get()->get_()) / (float)(1.000 * group_by_count[ind][index]));
       } else {
         tuple.add((*iter).values()[index]);
       }
