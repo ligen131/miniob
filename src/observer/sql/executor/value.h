@@ -62,7 +62,7 @@ public:
   }
 
   void to_string(std::ostream &os) const override {
-    os << std::setprecision(6);
+    os << std::setprecision(4);
     os << value_;
   }
 
