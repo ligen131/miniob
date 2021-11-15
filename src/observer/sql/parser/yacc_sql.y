@@ -129,6 +129,8 @@ ParserContext *get_context(yyscan_t scanner)
         ORDER
 		GROUP
         BY
+		INNER
+		JOIN
 
 %union {
   struct _Attr *attr;
@@ -389,7 +391,7 @@ update:			/*  update 语句的语法解析树*/
 		}
     ;
 select:				/*  select 语句的语法解析树*/
-    SELECT select_attr FROM ID rel_list where order_by group_by SEMICOLON
+    SELECT select_attr FROM ID rel_list select_inner_join where order_by group_by SEMICOLON
 		{
 			// CONTEXT->ssql->sstr.selection.relations[CONTEXT->from_length++]=$4;
 			selects_append_relation(&CONTEXT->ssql->sstr.selection, $4);
@@ -405,6 +407,23 @@ select:				/*  select 语句的语法解析树*/
 			CONTEXT->select_length = 0;
 			CONTEXT->value_length = 0;
 	}
+	;
+select_inner_join:
+	/* empty */
+	| INNER JOIN inner_join inner_join_list {
+
+		}
+	;
+inner_join_list:
+	/* empty */
+	| COMMA INNER JOIN inner_join inner_join_list {
+
+		}
+	;
+inner_join:
+	ID inner_join_on {
+			selects_append_relation(&CONTEXT->ssql->sstr.selection, $1);
+		}
 	;
 order_by:
 	/* empty */
@@ -645,6 +664,12 @@ where:
 				// CONTEXT->conditions[CONTEXT->condition_length++]=*$2;
 			}
     ;
+inner_join_on:
+	/* empty */
+    | ON condition condition_list {	
+				// CONTEXT->conditions[CONTEXT->condition_length++]=*$2;
+			}
+	;
 condition_list:
     /* empty */
     | AND condition condition_list {
