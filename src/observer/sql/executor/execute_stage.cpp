@@ -399,7 +399,7 @@ RC multi_tables_select_init(Trx *trx, Session *session, const Selects &selects, 
 
   int num;
   if(!(selects.attr_num == 1 && strcmp("*", selects.attributes[0].attribute_name) == 0)) {
-    for (int i = selects.attr_num - 1; i >= 0; i--) {
+    for (size_t i = 0; i < selects.attr_num; i++) {
       const RelAttr &attr = selects.attributes[i];
       Table * table = DefaultHandler::get_default().find_table(db,selects.attributes[i].relation_name);
       num = Table_Map[table];
@@ -647,7 +647,7 @@ RC do_select_group_by(TupleSet &tupleset, const Selects &selects, std::ostream &
     
     Tuple tuple;
     if (_ok != -1) {
-      for (int i = selects.attr_num - 1, index = 0; i >= 0; --i, ++index) {
+      for (size_t i = 0, index = 0; i < selects.attr_num; ++i, ++index) {
         switch (selects.attributes[i].agg) {
           case NO_AGOP: {
             tuple.add((*iter).values()[index]);
@@ -688,7 +688,7 @@ RC do_select_group_by(TupleSet &tupleset, const Selects &selects, std::ostream &
       }
       tupleset.replace_tuple(_ok, tuple);
     } else {
-      for (int i = selects.attr_num - 1, index = 0; i >= 0; --i, ++index) {
+      for (size_t i = 0, index = 0; i < selects.attr_num; ++i, ++index) {
         if (selects.attributes[i].agg == COUNT) {
           tuple.add(1);
         } else {
@@ -704,7 +704,7 @@ RC do_select_group_by(TupleSet &tupleset, const Selects &selects, std::ostream &
   int ind = 0;
   for (std::vector<Tuple>::const_iterator iter = tupleset.tuples().begin(); iter != tupleset.tuples().end(); ++iter, ++ind) {
     Tuple tuple;
-    for (int i = selects.attr_num - 1, index = 0; i >= 0; --i, ++index) {
+    for (int i = 0, index = 0; i < selects.attr_num; ++i, ++index) {
       if (selects.attributes[i].agg == AVG) {
         tuple.add(((*iter).values()[index].get()->get_()) / (float)(1.0 * group_by_count[ind][index]));
       } else {
@@ -766,7 +766,7 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
   }
 
   std::stringstream ss;
-  if (selects.attributes[selects.attr_num - 1].agg != NO_AGOP) {
+  if (selects.attributes[0].agg != NO_AGOP) {
     rc = do_aggregation_func_select(tuple_sets_.front(), selects, ss);
     if(rc != RC::SUCCESS) {
       LOG_ERROR("Failed to do aggregation function select.");
@@ -855,7 +855,7 @@ RC create_selection_executor(Trx *trx, const Selects &selects, const char *db, c
   if (selects.relation_num > 1) {
     TupleSchema::from_table(table, schema, NO_AGOP);
   }else 
-  for (int i = selects.attr_num - 1; i >= 0; i--) {
+  for (int i = 0; i < selects.attr_num; i++) {
     const RelAttr &attr = selects.attributes[i];
     if (nullptr == attr.relation_name || 0 == strcmp(table_name, attr.relation_name)) {
       if (0 == strcmp("*", attr.attribute_name) || (attr.attribute_name[0] >= '0' && attr.attribute_name[0] <= '9')) {
