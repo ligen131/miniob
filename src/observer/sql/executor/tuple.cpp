@@ -366,6 +366,12 @@ void TupleRecordConverter::add_record(const char *record) {
         tuple.add(s, strlen(s));
       }
       break;
+      case TEXTS: {
+        int value = *(int*)(record + field_meta->offset());
+        char *s = table_->get_text(value);
+        tuple.add(s, strlen(s));
+      }
+      break;
       default: {
         LOG_PANIC("Unsupported field type. type=%d", field_meta->type());
       }

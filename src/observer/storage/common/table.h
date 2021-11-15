@@ -77,6 +77,15 @@ public:
   RC rollback_update(Trx *trx, const RID &rid);
   RC rollback_delete(Trx *trx, const RID &rid);
 
+  int insert_text(char *s) {
+    text_ve.push_back(s);
+    text_num = text_ve.size();
+    return text_num - 1;
+  }
+  char *get_text(int index) {
+    return text_ve[index];
+  }
+
 private:
   RC scan_record(Trx *trx, ConditionFilter *filter, int limit, void *context, RC (*record_reader)(Record *record, void *context));
   RC scan_record_by_index(Trx *trx, IndexScanner *scanner, ConditionFilter *filter, int limit, void *context, RC (*record_reader)(Record *record, void *context));
@@ -108,6 +117,8 @@ private:
   RecordFileHandler *     record_handler_;   /// 记录操作
   std::vector<Index *>    indexes_;
   std::map<std::vector<const char*>,bool> _indexes_map;
+  int                     text_num;
+  std::vector<char*>      text_ve;
 };
 
 #endif // __OBSERVER_STORAGE_COMMON_TABLE_H__

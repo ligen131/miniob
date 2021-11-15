@@ -28,11 +28,12 @@ const char *ATTR_TYPE_NAME[] = {
   "chars",
   "ints",
   "floats",
-  "dates"
+  "dates",
+  "texts"
 };
 
 const char *attr_type_to_string(AttrType type) {
-  if (type >= UNDEFINED && type <= DATES) {
+  if (type >= UNDEFINED && type <= TEXTS) {
     return ATTR_TYPE_NAME[type];
   }
   return "unknown";

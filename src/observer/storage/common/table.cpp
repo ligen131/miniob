@@ -378,9 +378,9 @@ RC Table::make_record(int value_num, const Value *values, char * &record_out, in
 
   const int normal_field_start_index = table_meta_.sys_field_num();
   for (int i = data_l; i < data_r; i++) {
-    const FieldMeta *field = table_meta_.field(i-  data_l + normal_field_start_index);
+    const FieldMeta *field = table_meta_.field(i - data_l + normal_field_start_index);
     const Value &value = values[i];
-    if (field->type() != value.type) {
+    if (field->type() != value.type && !(TEXTS == field->type() && CHARS == value.type)) {
       LOG_ERROR("Invalid value type. field name=%s, type=%d, but given=%d",
         field->name(), field->type(), value.type);
       return RC::SCHEMA_FIELD_TYPE_MISMATCH;
@@ -394,7 +394,22 @@ RC Table::make_record(int value_num, const Value *values, char * &record_out, in
   for (int i = data_l; i < data_r; i++) {
     const FieldMeta *field = table_meta_.field(i - data_l + normal_field_start_index);
     const Value &value = values[i];
-    memcpy(record + field->offset(), value.data, field->len());
+    if (field->type() == TEXTS) {
+      char *s;
+      if (strlen((char*)(value.data)) > 4096) {
+        s = (char*)malloc(sizeof(char) * 4097);
+        memcpy(s, value.data, 4096);
+        s[4097] = 0;
+      } else {
+        s = (char*)malloc(sizeof(char) * (strlen((char*)(value.data)) + 1));
+        s = (char*)(value.data);
+        s[strlen((char*)(value.data))] = 0;
+      }
+      int result = insert_text(s);
+      memcpy(record + field->offset(), &result, field->len());
+    } else {
+      memcpy(record + field->offset(), value.data, field->len());
+    }
   }
 
   record_out = record;

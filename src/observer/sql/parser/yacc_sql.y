@@ -101,6 +101,7 @@ ParserContext *get_context(yyscan_t scanner)
         TRX_ROLLBACK
         INT_T
 		DATE_T
+		TEXT_T
         STRING_T
         FLOAT_T
         HELP
@@ -306,6 +307,7 @@ number:
 type:
 	INT_T { $$=INTS; }
        | DATE_T { $$=DATES; }
+	   | TEXT_T { $$=TEXTS; }
        | STRING_T { $$=CHARS; }
        | FLOAT_T { $$=FLOATS; }
        ;
