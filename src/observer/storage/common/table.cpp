@@ -399,8 +399,9 @@ RC Table::make_record(int value_num, const Value *values, char * &record_out, in
       size_t len = strlen(s);
       if (len > 4096) {
         // s = (char*)malloc(sizeof(char) * 4097);
+        s = (char*)malloc(sizeof(char) * 4097);
         memcpy(s, value.data, 4096);
-        // s[4097] = 0;
+        s[4097] = 0;
       } 
       // else {
       //   s = (char*)malloc(sizeof(char) * (strlen((char*)(value.data)) + 1));
@@ -725,7 +726,9 @@ RC Table::update_record(Trx *trx, Record *record, const FieldMeta *field_meta, c
       char *s = (char*)(value->data);
       size_t len = strlen((char*)(value->data));
       if (len > 4096) {
+        s = (char*)malloc(sizeof(char) * 4097);
         memcpy(s, value->data, 4096);
+        s[4097] = 0;
       } 
       // else {
       //   s = (char*)malloc(sizeof(char) * (strlen((char*)(value->data)) + 1));
