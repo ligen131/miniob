@@ -54,12 +54,15 @@ private:
   int value_;
 };
 
+#include <iomanip>
+#include <iostream>
 class FloatValue : public TupleValue {
 public:
   explicit FloatValue(float value) : value_(value) {
   }
 
   void to_string(std::ostream &os) const override {
+    os << std::setprecision(6);
     os << value_;
   }
 
