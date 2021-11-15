@@ -395,16 +395,18 @@ RC Table::make_record(int value_num, const Value *values, char * &record_out, in
     const FieldMeta *field = table_meta_.field(i - data_l + normal_field_start_index);
     const Value &value = values[i];
     if (field->type() == TEXTS) {
-      char *s;
-      if (strlen((char*)(value.data)) > 4096) {
-        s = (char*)malloc(sizeof(char) * 4097);
+      char *s = (char*)(value.data);
+      size_t len = strlen(s);
+      if (len > 4096) {
+        // s = (char*)malloc(sizeof(char) * 4097);
         memcpy(s, value.data, 4096);
-        s[4097] = 0;
-      } else {
-        s = (char*)malloc(sizeof(char) * (strlen((char*)(value.data)) + 1));
-        s = (char*)(value.data);
-        s[strlen((char*)(value.data))] = 0;
-      }
+        // s[4097] = 0;
+      } 
+      // else {
+      //   s = (char*)malloc(sizeof(char) * (strlen((char*)(value.data)) + 1));
+      //   s = (char*)(value.data);
+      //   s[strlen((char*)(value.data))] = 0;
+      // }
       int result = insert_text(s);
       memcpy(record + field->offset(), &result, field->len());
     } else {
@@ -720,16 +722,16 @@ RC Table::update_record(Trx *trx, Record *record, const FieldMeta *field_meta, c
     }
     break;
     case TEXTS: {
-      char *s;
-      if (strlen((char*)(value->data)) > 4096) {
-        s = (char*)malloc(sizeof(char) * 4097);
+      char *s = (char*)(value->data);
+      size_t len = strlen((char*)(value->data));
+      if (len > 4096) {
         memcpy(s, value->data, 4096);
-        s[4097] = 0;
-      } else {
-        s = (char*)malloc(sizeof(char) * (strlen((char*)(value->data)) + 1));
-        s = (char*)(value->data);
-        s[strlen((char*)(value->data))] = 0;
-      }
+      } 
+      // else {
+      //   s = (char*)malloc(sizeof(char) * (strlen((char*)(value->data)) + 1));
+      //   s = (char*)(value->data);
+      //   s[strlen((char*)(value->data))] = 0;
+      // }
       int result = insert_text(s);
       memcpy(New_record.data + field_meta->offset(), &result, field_meta->len());
     }
