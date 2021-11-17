@@ -34,6 +34,8 @@ Table::Table() :
     data_buffer_pool_(nullptr),
     file_id_(-1),
     record_handler_(nullptr) {
+      _indexes_map.clear();
+      _indexes_name_map.clear();
 }
 
 Table::~Table() {
@@ -624,8 +626,15 @@ static RC insert_index_record_reader_adapter(Record *record, void *context) {
 
 
 RC Table::create_index(Trx *trx, const char *index_name, const char *attribute_name[], size_t attr_num, int _is_unique_) {
+  LOG_INFO("create index %s %d",index_name,_indexes_name_map[strdup(index_name)]);
+  if (true == _indexes_name_map[strdup(index_name)]) {
+    return RC::SCHEMA_INDEX_NAME_REPEAT;
+  }
+  _indexes_name_map[strdup(index_name)] = true;
+  LOG_INFO("create index %s %d",index_name,_indexes_name_map[strdup(index_name)]);
+
   const FieldMeta *field_meta;
-  std::vector<const char*>_ve_for_index;
+  std::vector<char*>_ve_for_index;
   for (size_t i = 0; i < attr_num; ++i) {
     if (index_name == nullptr || common::is_blank(index_name) ||
         attribute_name == nullptr || common::is_blank(attribute_name[i])) {
@@ -635,12 +644,12 @@ RC Table::create_index(Trx *trx, const char *index_name, const char *attribute_n
     if (!field_meta) {
       return RC::SCHEMA_FIELD_MISSING;
     }
-    _ve_for_index.push_back(attribute_name[i]);
+    _ve_for_index.push_back(strdup(attribute_name[i]));
     if (_is_unique_) {
       _unique_indexs_.push_back(field_meta);
     }
   }
-  if (_indexes_map[_ve_for_index]) return RC::SCHEMA_INDEX_EXIST;
+  if (true == _indexes_map[_ve_for_index]) return RC::SCHEMA_INDEX_EXIST;
   _indexes_map[_ve_for_index] = true;
   
   return RC::SUCCESS; // hhh
