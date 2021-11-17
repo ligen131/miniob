@@ -589,8 +589,8 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
         size_t sz = tupleset.size(), ans = 0;
         while (ans < sz && tupleset.tuples()[ans].values()[value_index].get()->_is_null_()) ++ans;
         if (ans >= sz) {
-          LOG_ERROR("Invalid Input.");
-          return RC::GENERIC_ERROR;
+          os << "NULL";
+          break;
         }
         for (size_t j = ans + 1; j < sz; ++j) {
           if (tupleset.tuples()[j].values()[value_index].get()->_is_null_()) continue;
@@ -619,8 +619,8 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
         size_t sz = tupleset.size(), ans = 0;
         while (ans < sz && tupleset.tuples()[ans].values()[value_index].get()->_is_null_()) ++ans;
         if (ans >= sz) {
-          LOG_ERROR("Invalid Input.");
-          return RC::GENERIC_ERROR;
+          os << "NULL";
+          break;
         }
         for (size_t j = ans + 1; j < sz; ++j) {
           if (tupleset.tuples()[j].values()[value_index].get()->_is_null_()) continue;
@@ -652,6 +652,10 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
           if (tupleset.tuples()[j].values()[value_index].get()->_is_null_()) continue;
           ++cnt;
           ans += tupleset.tuples()[j].values()[value_index].get()->get_();
+        }
+        if (0 == cnt) {
+          os << "NULL";
+          break;
         }
         os << (float)(ans / (1.0 * cnt));
       }
