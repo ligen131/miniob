@@ -845,10 +845,6 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
     }
   }
   
-  // std::stringstream sss;
-  // tuple_sets_.front().print(sss, false);
-  // session_event->set_response(sss.str());
-
   std::stringstream ss;
   if (selects.attributes[0].agg != NO_AGOP) {
     rc = do_aggregation_func_select(tuple_sets_.front(), selects, ss);

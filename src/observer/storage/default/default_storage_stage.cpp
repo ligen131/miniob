@@ -202,7 +202,7 @@ void DefaultStorageStage::handle_event(StageEvent *event) {
   case SCF_CREATE_INDEX: {
       const CreateIndex &create_index = sql->sstr.create_index;
       rc = handler_->create_index(current_trx, current_db, create_index.relation_name, 
-                                  create_index.index_name, (const char **)create_index.attribute_name, create_index.attr_num);
+                                  create_index.index_name, (const char **)create_index.attribute_name, create_index.attr_num, create_index._is_unique);
       snprintf(response, sizeof(response), "%s\n", rc == RC::SUCCESS ? "SUCCESS" : "FAILURE");
     }
     break;

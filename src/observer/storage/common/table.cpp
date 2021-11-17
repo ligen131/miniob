@@ -27,6 +27,8 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/index.h"
 #include "storage/common/bplus_tree_index.h"
 #include "storage/trx/trx.h"
+// #include "sql/executor/execution_node.h"
+// #include "sql/executor/tuple.h"
 
 Table::Table() : 
     data_buffer_pool_(nullptr),
@@ -277,6 +279,42 @@ RC Table_Date_Checker(Value values){
   return RC::SUCCESS;
 }
 
+RC Table::Unique_Value_Checker(Trx *trx, const char *rec) {
+  if(_unique_indexs_.size() == 0) return RC::SUCCESS;
+  // TupleSet tupleset;
+  // SelectExeNode node;
+  // TupleSchema schema;
+  // TupleSchema::from_table(table, schema, NO_AGOP);
+  // std::vector<DefaultConditionFilter *> condition_filters;
+  // node.init(trx, table, std::move(schema), std::move(condition_filters));
+  // node.execute(tupleset);
+
+  RC rc = RC::SUCCESS;
+  RecordFileScanner scanner;
+  rc = scanner.open_scan(*data_buffer_pool_, file_id_, nullptr);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("failed to open scanner. file id=%d. rc=%d:%s", file_id_, rc, strrc(rc));
+    return rc;
+  }
+
+  Record record;
+  rc = scanner.get_first_record(&record);
+  for ( ; RC::SUCCESS == rc; rc = scanner.get_next_record(&record)) {
+    if (trx == nullptr || trx->is_visible(this, &record)) {
+      //got one record. start to check.
+      for (std::vector<const FieldMeta*>::const_iterator iter = _unique_indexs_.begin(); iter != _unique_indexs_.end(); ++iter) {
+        if (strcmp(rec + (*iter)->offset(), record.data + (*iter)->offset()) == 0) {
+          scanner.close_scan();
+          return RC::GENERIC_ERROR;
+        }
+      }
+    }
+  }
+
+  scanner.close_scan();
+  return RC::SUCCESS;
+}
+
 RC Table::insert_record(Trx *trx, Record *record) {
   RC rc = RC::SUCCESS;
 
@@ -346,16 +384,24 @@ RC Table::insert_record(Trx *trx, int value_num, const Value *values, int data_n
       }
       record[i].data = record_data[i];
       // record.valid = true;
+
+      rc = Unique_Value_Checker(trx, record_data[i]);
+      if (rc != RC::SUCCESS) {
+        LOG_ERROR("You cannot insert an repeative value where exists unique index. rc=%d:%s", rc, strrc(rc));
+        return rc;
+      }
   }
-  for (int i = 0; i < data_num; i++){
+  for (int i = 0; i < data_num; i++) {
     rc = insert_record(trx, &record[i]);
-    delete[] record_data[i];
     if (rc != RC::SUCCESS) {
       LOG_ERROR("Failed to create a record. rc=%d:%s", rc, strrc(rc));
       return rc;
     }
   }
 
+  for (int i = 0; i < data_num; i++) {
+    delete[] record_data[i];
+  }
   return rc;
 }
 
@@ -577,7 +623,7 @@ static RC insert_index_record_reader_adapter(Record *record, void *context) {
 }
 
 
-RC Table::create_index(Trx *trx, const char *index_name, const char *attribute_name[], size_t attr_num) {
+RC Table::create_index(Trx *trx, const char *index_name, const char *attribute_name[], size_t attr_num, int _is_unique_) {
   const FieldMeta *field_meta;
   std::vector<const char*>_ve_for_index;
   for (size_t i = 0; i < attr_num; ++i) {
@@ -590,11 +636,18 @@ RC Table::create_index(Trx *trx, const char *index_name, const char *attribute_n
       return RC::SCHEMA_FIELD_MISSING;
     }
     _ve_for_index.push_back(attribute_name[i]);
+    if (_is_unique_) {
+      _unique_indexs_.push_back(field_meta);
+    }
   }
   if (_indexes_map[_ve_for_index]) return RC::SCHEMA_INDEX_EXIST;
   _indexes_map[_ve_for_index] = true;
   
   return RC::SUCCESS; // hhh
+
+
+
+
   for (size_t i = 0; i < attr_num; ++i) {
     if (table_meta_.index(index_name) != nullptr ||
         table_meta_.find_index_by_field((attribute_name[0]))) {

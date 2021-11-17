@@ -61,13 +61,16 @@ public:
 
   RC scan_record(Trx *trx, ConditionFilter *filter, int limit, void *context, void (*record_reader)(const char *data, void *context));
 
-  RC create_index(Trx *trx, const char *index_name, const char *attribute_name[], size_t attr_num);
+  RC create_index(Trx *trx, const char *index_name, const char *attribute_name[], size_t attr_num, int _is_unique_);
+
+  RC Unique_Value_Checker(Trx *trx, const char *rec);
 
 public:
   const char *name() const;
 
   const TableMeta &table_meta() const;
   TableMeta real_table_meta();
+  std::vector<const FieldMeta *> &unique_indexs_() {return _unique_indexs_;}
 
   RC sync();
 
@@ -121,6 +124,7 @@ private:
   std::map<std::vector<const char*>,bool> _indexes_map;
   int                     text_num;
   std::vector<char*>      text_ve;
+  std::vector<const FieldMeta *>      _unique_indexs_;
 };
 
 #endif // __OBSERVER_STORAGE_COMMON_TABLE_H__
