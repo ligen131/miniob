@@ -121,11 +121,11 @@ private:
   int                     file_id_;
   RecordFileHandler *     record_handler_;   /// 记录操作
   std::vector<Index *>    indexes_;
-  std::map<std::vector<char*>,bool> _indexes_map;
+  std::map<std::vector<std::string>,bool> _indexes_map;
   int                     text_num;
   std::vector<char*>      text_ve;
   std::vector<const FieldMeta *>      _unique_indexs_;
-  std::map<char*,bool>   _indexes_name_map;
+  std::map<std::string,bool>   _indexes_name_map;
 };
 
 #endif // __OBSERVER_STORAGE_COMMON_TABLE_H__
