@@ -540,10 +540,10 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
         size_t sz = tupleset.size(), ans = 0;
         if (0 == strcmp("*", selects.attributes[i].attribute_name) ||
             (selects.attributes[i].attribute_name[0] >= '0' && selects.attributes[i].attribute_name[0] <= '9')) {
-          size_t value_index = 0;
-          for (std::vector<TupleField>::const_iterator iter = tupleset.schema().fields().begin(); iter != tupleset.schema().fields().end(); ++iter, ++value_index) {
+          for (size_t j = 0; j < sz; ++j) {
+            size_t value_index = 0;
             bool _is_all_null_ = 1;
-            for (size_t j = 0; j < sz; ++j) {
+            for (std::vector<TupleField>::const_iterator iter = tupleset.schema().fields().begin(); iter != tupleset.schema().fields().end(); ++iter, ++value_index) {
               if (!(tupleset.tuples()[j].values()[value_index].get()->_is_null_())) {
                 _is_all_null_ = 0;
                 break;
