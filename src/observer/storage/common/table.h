@@ -18,6 +18,8 @@ See the Mulan PSL v2 for more details. */
 #include "storage/common/table_meta.h"
 #include <map>
 
+#define __NULL_DATA__ "&Nu\0"
+
 class DiskBufferPool;
 class RecordFileHandler;
 class ConditionFilter;

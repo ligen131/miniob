@@ -38,9 +38,9 @@ DefaultConditionFilter::DefaultConditionFilter()
 DefaultConditionFilter::~DefaultConditionFilter()
 {}
 
-RC DefaultConditionFilter::init(const ConDesc &left, const ConDesc &right, AttrType attr_type, CompOp comp_op)
+RC DefaultConditionFilter::init(const ConDesc &left, const ConDesc &right, AttrType attr_type, CompOp comp_op, bool _is_null_exist)
 {
-  if (attr_type < CHARS || attr_type > TEXTS) {
+  if ((attr_type < CHARS || attr_type > TEXTS) && !_is_null_exist) {
     LOG_ERROR("Invalid condition with unsupported attribute type: %d", attr_type);
     return RC::INVALID_ARGUMENT;
   }
@@ -77,6 +77,7 @@ RC DefaultConditionFilter::init(Table &table, const Condition &condition)
 
   AttrType type_left = UNDEFINED;
   AttrType type_right = UNDEFINED;
+  bool _is_null_exist = 0;
 
   if (1 == condition.left_is_attr) {
     left.is_attr = true;
@@ -99,7 +100,13 @@ RC DefaultConditionFilter::init(Table &table, const Condition &condition)
     }
 
     left.is_attr = false;
-    left.value = condition.left_value.data;  // 校验type 或者转换类型
+    if (condition.left_value._is_null == 1) {
+      left.value = malloc(4);
+      memcpy(left.value, __NULL_DATA__, 4);
+      _is_null_exist = 1;
+    } else {
+      left.value = condition.left_value.data;  // 校验type 或者转换类型
+    }
     type_left = condition.left_value.type;
 
     left.attr_length = 0;
@@ -126,7 +133,13 @@ RC DefaultConditionFilter::init(Table &table, const Condition &condition)
     }
 
     right.is_attr = false;
-    right.value = condition.right_value.data;
+    if (condition.right_value._is_null == 1) {
+      right.value = malloc(4);
+      memcpy(right.value, __NULL_DATA__, 4);
+      _is_null_exist = 1;
+    } else {
+      right.value = condition.right_value.data;  // 校验type 或者转换类型
+    }
     type_right = condition.right_value.type;
 
     right.attr_length = 0;
@@ -140,11 +153,18 @@ RC DefaultConditionFilter::init(Table &table, const Condition &condition)
   //  }
   // NOTE：这里没有实现不同类型的数据比较，比如整数跟浮点数之间的对比
   // 但是选手们还是要实现。这个功能在预选赛中会出现
-  if (type_left != type_right) {
+  
+  if ((left.value != nullptr && strcmp((char*)left.value, __NULL_DATA__) == 0) || 
+      (right.value != nullptr && strcmp((char*)right.value, __NULL_DATA__) == 0)) {
+    _is_null_exist = 1;
+  }
+
+  if (type_left != type_right && !_is_null_exist) {
     return RC::SCHEMA_FIELD_TYPE_MISMATCH;
   }
 
-  return init(left, right, type_left, condition.comp);
+
+  return init(left, right, type_left, condition.comp, _is_null_exist);
 }
 
 bool DefaultConditionFilter::filter(const Record &rec) const
@@ -165,6 +185,39 @@ bool DefaultConditionFilter::filter(const Record &rec) const
     right_value = s;
   } else {
     right_value = (char *)right_.value;
+  }
+
+  bool left_is_null = (bool)(0 == strcmp(left_value, __NULL_DATA__));
+  bool right_is_null = (bool)(0 == strcmp(right_value, __NULL_DATA__));
+
+  if (left_is_null || right_is_null) {
+    switch (comp_op_) {
+      case EQUAL_TO:
+      case LESS_EQUAL:
+      case NOT_EQUAL:
+      case LESS_THAN:
+      case GREAT_EQUAL:
+      case GREAT_THAN:
+        return false;
+      case COMP_IS_NOT: {
+        if (left_is_null && right_is_null) {
+          return false;
+        }
+        return true;
+      }
+      case COMP_IS: {
+        if (left_is_null && right_is_null) {
+          return true;
+        }
+        return false;
+      }
+
+      default:
+        break;
+    }
+
+    LOG_PANIC("Never should print this (In NULL).");
+    return false;  // should not go here
   }
 
   int cmp_result = 0;

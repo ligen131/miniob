@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/parser/parse.h"
 #include "rc.h"
 #include "common/log/log.h"
+#include "storage/common/table.h"
 
 RC parse(char *st, Query *sqln);
 
@@ -133,10 +134,15 @@ void value_init_date(Value *value, const char *v) {
   value->data = malloc(sizeof(ans));
   memcpy(value->data, &ans, sizeof(ans));
 }
+void value_init_null(Value *value) {
+  value->type = UNDEFINED;
+  value->_is_null = 1;
+}
 void value_destroy(Value *value) {
   value->type = UNDEFINED;
   free(value->data);
   value->data = nullptr;
+  value->_is_null = 0;
 }
 
 void condition_init(Condition *condition, CompOp comp, 
@@ -170,14 +176,16 @@ void condition_destroy(Condition *condition) {
   }
 }
 
-void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length) {
+void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length, int nullable) {
   attr_info->name = strdup(name);
   attr_info->type = type;
   attr_info->length = length;
+  attr_info->_nullable = nullable;
 }
 void attr_info_destroy(AttrInfo *attr_info) {
   free(attr_info->name);
   attr_info->name = nullptr;
+  attr_info->_nullable = 0;
 }
 
 void selects_init(Selects *selects, ...);
@@ -231,7 +239,7 @@ void selects_destroy(Selects *selects) {
   selects->group_num = 0;
 }
 
-void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t value_num,size_t data_num,int data_list_r[]) {
+void inserts_init(Inserts *inserts, const char *relation_name, Value values[], size_t value_num, size_t data_num, int data_list_r[]) {
   assert(value_num <= sizeof(inserts->values)/sizeof(inserts->values[0]));
 
   inserts->relation_name = strdup(relation_name);

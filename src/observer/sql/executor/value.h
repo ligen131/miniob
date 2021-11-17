@@ -20,6 +20,7 @@ See the Mulan PSL v2 for more details. */
 #include <string>
 #include <ostream>
 #include "common/log/log.h"
+#include "storage/common/table.h"
 
 class TupleValue {
 public:
@@ -29,6 +30,7 @@ public:
   virtual void to_string(std::ostream &os) const = 0;
   virtual int compare(const TupleValue &other) const = 0;
   virtual float get_() const = 0;
+  virtual int _is_null_() const = 0;
 private:
 };
 
@@ -48,6 +50,10 @@ public:
 
   float get_() const override {
     return (float)value_;
+  }
+
+  int _is_null_() const override {
+    return 0;
   }
 
 private:
@@ -80,6 +86,10 @@ public:
 
   float get_() const override {
     return value_;
+  }
+
+  int _is_null_() const override {
+    return 0;
   }
 private:
   float value_;
@@ -123,6 +133,13 @@ public:
   float get_() const override {
     int d = Check_is_it_date();
     return (float)d;
+  }
+
+  int _is_null_() const override {
+    if (0 == strcmp(value_.c_str(), __NULL_DATA__)) {
+      return 1;
+    }
+    return 0;
   }
 private:
   std::string value_;

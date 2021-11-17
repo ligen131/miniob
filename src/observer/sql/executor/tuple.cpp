@@ -285,10 +285,18 @@ void TupleSet::print(std::ostream &os, bool is_multi_tables) const {
     const std::vector<std::shared_ptr<TupleValue>> &values = item.values();
     for (std::vector<std::shared_ptr<TupleValue>>::const_iterator iter = values.begin(), end = --values.end();
           iter != end; ++iter, ++values_index) {
-      (*iter)->to_string(os);
+      if (1 == (*iter)->_is_null_()) {
+        os << "NULL";
+      } else {
+        (*iter)->to_string(os);
+      }
       os << " | ";
     }
-    values.back()->to_string(os);
+    if (1 == values.back()->_is_null_()) {
+      os << "NULL";
+    } else {
+      values.back()->to_string(os);
+    }
     os << std::endl;
   }
 }
@@ -334,6 +342,12 @@ void TupleRecordConverter::add_record(const char *record) {
   for (const TupleField &field : schema.fields()) {
     const FieldMeta *field_meta = table_meta.field(field.field_name());
     assert(field_meta != nullptr);
+
+    if (strcmp((char*)(record + field_meta->offset()), __NULL_DATA__) == 0) {
+      tuple.add(__NULL_DATA__, strlen(__NULL_DATA__));
+      continue;
+    }
+
     switch (field_meta->type()) {
       case INTS: {
         int value = *(int*)(record + field_meta->offset());

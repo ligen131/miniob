@@ -51,7 +51,7 @@ AttrType attr_type_from_string(const char *s) {
 FieldMeta::FieldMeta() : attr_type_(AttrType::UNDEFINED), attr_offset_(-1), attr_len_(0), visible_(false) {
 }
 
-RC FieldMeta::init(const char *name, AttrType attr_type, int attr_offset, int attr_len, bool visible) {
+RC FieldMeta::init(const char *name, AttrType attr_type, int attr_offset, int attr_len, bool visible, int nullable) {
   if (nullptr == name || '\0' == name[0]) {
     LOG_WARN("Name cannot be empty");
     return RC::INVALID_ARGUMENT;
@@ -68,10 +68,15 @@ RC FieldMeta::init(const char *name, AttrType attr_type, int attr_offset, int at
   attr_len_ = attr_len;
   attr_offset_ = attr_offset;
   visible_ = visible;
+  nullable_ = nullable;
 
   LOG_INFO("Init a field with name=%s", name);
   return RC::SUCCESS;
 }
+// RC FieldMeta::init(const char *name, AttrType attr_type, int attr_offset, int attr_len, bool visible, int nullable) {
+//   init(name, attr_type, attr_offset, attr_len, visible);
+//   nullable_ = nullable;
+// }
 
 const char *FieldMeta::name() const {
   return name_.c_str();
@@ -91,6 +96,10 @@ int FieldMeta::len() const {
 
 bool FieldMeta::visible() const {
   return visible_;
+}
+
+int FieldMeta::nullable() const {
+  return nullable_;
 }
 
 void FieldMeta::desc(std::ostream &os) const {
@@ -153,5 +162,5 @@ RC FieldMeta::from_json(const Json::Value &json_value, FieldMeta &field) {
   int offset = offset_value.asInt();
   int len = len_value.asInt();
   bool visible = visible_value.asBool();
-  return field.init(name, type, offset, len, visible);
+  return field.init(name, type, offset, len, visible, 0); // 读文件时 nullable 没有实现。
 }

@@ -45,7 +45,7 @@ public:
   DefaultConditionFilter();
   virtual ~DefaultConditionFilter();
 
-  RC init(const ConDesc &left, const ConDesc &right, AttrType attr_type, CompOp comp_op);
+  RC init(const ConDesc &left, const ConDesc &right, AttrType attr_type, CompOp comp_op, bool _is_null_exist);
   RC init(Table &table, const Condition &condition);
 
   virtual bool filter(const Record &rec) const;

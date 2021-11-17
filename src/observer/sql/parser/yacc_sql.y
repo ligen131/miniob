@@ -132,6 +132,10 @@ ParserContext *get_context(yyscan_t scanner)
         BY
 		INNER
 		JOIN
+		IS
+		NOT
+		NULLL
+		NULLABLE
 
 %union {
   struct _Attr *attr;
@@ -281,7 +285,7 @@ attr_def:
     ID_get type LBRACE number RBRACE 
 		{
 			AttrInfo attribute;
-			attr_info_init(&attribute, CONTEXT->id, $2, $4);
+			attr_info_init(&attribute, CONTEXT->id, $2, $4, 0);
 			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
 			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name =(char*)malloc(sizeof(char));
 			// strcpy(CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name, CONTEXT->id); 
@@ -289,10 +293,54 @@ attr_def:
 			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].length = $4;
 			CONTEXT->value_length++;
 		}
-    |ID_get type
+    | ID_get type LBRACE number RBRACE NOT NULLL
 		{
 			AttrInfo attribute;
-			attr_info_init(&attribute, CONTEXT->id, $2, 4);
+			attr_info_init(&attribute, CONTEXT->id, $2, $4, 0);
+			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
+			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name =(char*)malloc(sizeof(char));
+			// strcpy(CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name, CONTEXT->id); 
+			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].type = $2;  
+			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].length = $4;
+			CONTEXT->value_length++;
+		}
+    | ID_get type LBRACE number RBRACE NULLABLE
+		{
+			AttrInfo attribute;
+			attr_info_init(&attribute, CONTEXT->id, $2, $4, 1);
+			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
+			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name =(char*)malloc(sizeof(char));
+			// strcpy(CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name, CONTEXT->id); 
+			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].type = $2;  
+			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].length = $4;
+			CONTEXT->value_length++;
+		}
+    | ID_get type
+		{
+			AttrInfo attribute;
+			attr_info_init(&attribute, CONTEXT->id, $2, 4, 0);
+			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
+			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name=(char*)malloc(sizeof(char));
+			// strcpy(CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name, CONTEXT->id); 
+			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].type=$2;  
+			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].length=4; // default attribute length
+			CONTEXT->value_length++;
+		}
+    | ID_get type NOT NULLL
+		{
+			AttrInfo attribute;
+			attr_info_init(&attribute, CONTEXT->id, $2, 4, 0);
+			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
+			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name=(char*)malloc(sizeof(char));
+			// strcpy(CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name, CONTEXT->id); 
+			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].type=$2;  
+			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].length=4; // default attribute length
+			CONTEXT->value_length++;
+		}
+    | ID_get type NULLABLE
+		{
+			AttrInfo attribute;
+			attr_info_init(&attribute, CONTEXT->id, $2, 4, 1);
 			create_table_append_attribute(&CONTEXT->ssql->sstr.create_table, &attribute);
 			// CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name=(char*)malloc(sizeof(char));
 			// strcpy(CONTEXT->ssql->sstr.create_table.attributes[CONTEXT->value_length].name, CONTEXT->id); 
@@ -370,6 +418,9 @@ value:
 			$1 = substr($1,1,strlen($1)-2);
   		value_init_string(&CONTEXT->values[CONTEXT->value_length++], $1);
 		}
+	|NULLL {
+		value_init_null(&CONTEXT->values[CONTEXT->value_length++]);
+		}
     ;
     
 delete:		/*  delete 语句的语法解析树*/
@@ -410,23 +461,6 @@ select:				/*  select 语句的语法解析树*/
 			CONTEXT->value_length = 0;
 	}
 	;
-// select_inner_join:
-// 	/* empty */
-// 	| INNER JOIN inner_join inner_join_list {
-
-// 		}
-// 	;
-// inner_join_list:
-// 	/* empty */
-// 	| INNER JOIN inner_join inner_join_list {
-
-// 		}
-// 	;
-// inner_join:
-// 	ID inner_join_on {
-// 			selects_append_relation(&CONTEXT->ssql->sstr.selection, $1);
-// 		}
-// 	;
 order_by:
 	/* empty */
     | ORDER BY select_order select_order_list {
@@ -552,50 +586,6 @@ attr_list:
 	| COMMA select_attribute attr_list {
 
 		}
-	// | COMMA aggOp LBRACE STAR RBRACE attr_list {
-	// 		RelAttr attr;
-	// 		relation_attr_init_(&attr, NULL, "*", CONTEXT->aggop);
-	// 		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-	// 	}
-	// | COMMA aggOp LBRACE NUMBER RBRACE attr_list {
-	// 		RelAttr attr;
-	// 		relation_attr_init_(&attr, NULL, int_to_char_array($4), CONTEXT->aggop);
-	// 		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-	// 	}
-	// | COMMA aggOp LBRACE ID RBRACE attr_list {
-	// 		RelAttr attr;
-	// 		relation_attr_init_(&attr, NULL, $4, CONTEXT->aggop);
-	// 		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-	// 	}
-	// | COMMA aggOp LBRACE ID DOT ID RBRACE attr_list {
-	// 		RelAttr attr;
-	// 		relation_attr_init_(&attr, $4, $6, CONTEXT->aggop);
-	// 		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-	// 	}
-	// | COMMA aggOp LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE attr_list {
-	// 		RelAttr attr;
-	// 		relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
-	// 		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-	// 	}
-	// | COMMA aggOp LBRACE RBRACE attr_list {
-	// 		RelAttr attr;
-	// 		relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
-	// 		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-	// 	}
-    // | COMMA ID attr_list {
-	// 		RelAttr attr;
-	// 		relation_attr_init(&attr, NULL, $2);
-	// 		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-    //  	  // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length].relation_name = NULL;
-    //     // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length++].attribute_name=$2;
-    //   }
-    // | COMMA ID DOT ID attr_list {
-	// 		RelAttr attr;
-	// 		relation_attr_init(&attr, $2, $4);
-	// 		selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-    //     // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length].attribute_name=$4;
-    //     // CONTEXT->ssql->sstr.selection.attributes[CONTEXT->select_length++].relation_name=$2;
-  	//   }
   	;
 aggr_select_attr:
     STAR{  
@@ -622,38 +612,6 @@ aggr_attr_list:
   	;
 
 
-// aggregation:
-// 	aggOp LBRACE STAR RBRACE {
-// 			RelAttr attr;
-// 			relation_attr_init_(&attr, NULL, "*", CONTEXT->aggop);
-// 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-// 		}
-// 	| aggOp LBRACE NUMBER RBRACE {
-// 			RelAttr attr;
-// 			relation_attr_init_(&attr, NULL, int_to_char_array($3), CONTEXT->aggop);
-// 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-// 		}
-// 	| aggOp LBRACE ID RBRACE {
-// 			RelAttr attr;
-// 			relation_attr_init_(&attr, NULL, $3, CONTEXT->aggop);
-// 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-// 		}
-// 	| aggOp LBRACE ID DOT ID RBRACE {
-// 			RelAttr attr;
-// 			relation_attr_init_(&attr, $3, $5, CONTEXT->aggop);
-// 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-// 		}
-// 	| aggOp LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE {
-// 			RelAttr attr;
-// 			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
-// 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-// 		}
-// 	| aggOp LBRACE RBRACE {
-// 			RelAttr attr;
-// 			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
-// 			selects_append_attribute(&CONTEXT->ssql->sstr.selection, &attr);
-// 		}
-//     ;
 rel_list:
     /* empty */
     | COMMA ID rel_list {	
@@ -836,6 +794,8 @@ comOp:
     | LE { CONTEXT->comp = LESS_EQUAL; }
     | GE { CONTEXT->comp = GREAT_EQUAL; }
     | NE { CONTEXT->comp = NOT_EQUAL; }
+	| IS NOT { CONTEXT->comp = COMP_IS_NOT; }
+	| IS { CONTEXT->comp = COMP_IS; }
     ;
 
 aggOp:

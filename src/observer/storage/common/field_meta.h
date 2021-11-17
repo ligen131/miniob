@@ -29,7 +29,8 @@ public:
   FieldMeta();
   ~FieldMeta() = default;
 
-  RC init(const char *name, AttrType attr_type, int attr_offset, int attr_len, bool visible);
+  // RC init(const char *name, AttrType attr_type, int attr_offset, int attr_len, bool visible);
+  RC init(const char *name, AttrType attr_type, int attr_offset, int attr_len, bool visible, int nullable);
 
 public:
   const char *name() const;
@@ -37,6 +38,7 @@ public:
   int         offset() const;
   int         len() const;
   bool        visible() const;
+  int         nullable() const;
 
 public:
   void desc(std::ostream &os) const;
@@ -49,6 +51,7 @@ private:
   AttrType     attr_type_;
   int          attr_offset_;
   int          attr_len_;
-  bool         visible_;
+  bool         nullable_;
+  int         visible_;
 };
 #endif // __OBSERVER_STORAGE_COMMON_FIELD_META_H__

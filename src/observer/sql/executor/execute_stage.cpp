@@ -266,7 +266,7 @@ size_t total_table;
 size_t tuple_filter[MAX_NUM][MAX_NUM];
 int DFS_tree[MAX_NUM];
 TupleSet multi_tables_tuple_set;
-bool multi_tables_filter(int cmp_result,CompOp comp_op_) {
+bool multi_tables_filter(int cmp_result, CompOp comp_op_) {
   switch (comp_op_) {
     case EQUAL_TO:
       return 0 == cmp_result;
@@ -280,6 +280,10 @@ bool multi_tables_filter(int cmp_result,CompOp comp_op_) {
       return cmp_result >= 0;
     case GREAT_THAN:
       return cmp_result > 0;
+    case COMP_IS_NOT:
+    
+    case COMP_IS:
+
 
     default:
       break;
@@ -327,6 +331,32 @@ RC do_multi_tables_select_DFS(size_t now, TupleSet &multi_tables_tuple_set) {
       f = Field_To_Field_from[now][i];
       t = Field_To_Field_targ[now][i];
       // LOG_INFO("num = %d, f = %d, t = %d %d %d %d.",num,DFS_tree[num],f,t,tuple_sets_[num].tuples()[DFS_tree[num]].values()[f].get()->compare(*((*iter).values()[t].get())),Multi_tables_compop_[now][i]);
+      int left_is_null = tuple_sets_[num].tuples()[DFS_tree[num]].values()[f].get()->_is_null_();
+      int right_is_null = (*iter).values()[t].get()->_is_null_();
+      if (left_is_null || right_is_null) {
+        switch (Multi_tables_compop_[now][i]) {
+          case EQUAL_TO:
+          case LESS_EQUAL:
+          case NOT_EQUAL:
+          case LESS_THAN:
+          case GREAT_EQUAL:
+          case GREAT_THAN:
+            ok_ = 0;
+          break;
+          case COMP_IS_NOT: {
+            if (left_is_null && right_is_null) {
+              ok_ = 0;
+            }
+            ok_ = 1;
+          }
+          case COMP_IS: {
+            if (left_is_null && right_is_null) {
+              ok_ = 1;
+            }
+            ok_ = 0;
+          }
+        }
+      } else 
       if (!multi_tables_filter(tuple_sets_[num].tuples()[DFS_tree[num]].values()[f].get()->compare(*((*iter).values()[t].get())), Multi_tables_compop_[now][i])){
         ok_ = 0;
         break;
@@ -506,7 +536,39 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
   for (size_t i = 0;i < selects.attr_num ; ++i) {
     switch(selects.attributes[i].agg){
       case COUNT: {
-        os << std::to_string(tupleset.size()); // 未考虑 NULL 的情况
+        // os << std::to_string(tupleset.size()); // 未考虑 NULL 的情况
+        size_t sz = tupleset.size(), ans = 0;
+        if (0 == strcmp("*", selects.attributes[i].attribute_name) ||
+            (selects.attributes[i].attribute_name[0] >= '0' && selects.attributes[i].attribute_name[0] <= '9')) {
+          size_t value_index = 0;
+          for (std::vector<TupleField>::const_iterator iter = tupleset.schema().fields().begin(); iter != tupleset.schema().fields().end(); ++iter, ++value_index) {
+            bool _is_all_null_ = 1;
+            for (size_t j = 0; j < sz; ++j) {
+              if (!(tupleset.tuples()[j].values()[value_index].get()->_is_null_())) {
+                _is_all_null_ = 0;
+                break;
+              }
+            }
+            if (!_is_all_null_) {
+              ++ans;
+            }
+          }
+          os << ans;
+        } else {
+          size_t value_index = 0;
+          for (std::vector<TupleField>::const_iterator iter = tupleset.schema().fields().begin(); iter != tupleset.schema().fields().end(); ++iter, ++value_index) {
+            if (0 == strcmp((*iter).field_name(), selects.attributes[i].attribute_name)) {
+              break;
+            }
+          }
+          size_t sz = tupleset.size(), ans = 0;
+          for (size_t j = 0; j < sz; ++j) {
+            if (!(tupleset.tuples()[j].values()[value_index].get()->_is_null_())) {
+              ++ans;
+            }
+          }
+          os << ans;
+        }
       }
       break;
       case MAX: {
@@ -525,7 +587,13 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
           }
         }
         size_t sz = tupleset.size(), ans = 0;
-        for (size_t j = 1; j < sz; ++j) {
+        while (ans < sz && tupleset.tuples()[ans].values()[value_index].get()->_is_null_()) ++ans;
+        if (ans >= sz) {
+          LOG_ERROR("Invalid Input.");
+          return RC::GENERIC_ERROR;
+        }
+        for (size_t j = ans + 1; j < sz; ++j) {
+          if (tupleset.tuples()[j].values()[value_index].get()->_is_null_()) continue;
           if (tupleset.tuples()[j].values()[value_index].get()->compare(*(tupleset.tuples()[ans].values()[value_index].get())) > 0) {
             ans = j;
           }
@@ -549,7 +617,13 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
           }
         }
         size_t sz = tupleset.size(), ans = 0;
-        for (size_t j = 1; j < sz; ++j) {
+        while (ans < sz && tupleset.tuples()[ans].values()[value_index].get()->_is_null_()) ++ans;
+        if (ans >= sz) {
+          LOG_ERROR("Invalid Input.");
+          return RC::GENERIC_ERROR;
+        }
+        for (size_t j = ans + 1; j < sz; ++j) {
+          if (tupleset.tuples()[j].values()[value_index].get()->_is_null_()) continue;
           if (tupleset.tuples()[j].values()[value_index].get()->compare(*(tupleset.tuples()[ans].values()[value_index].get())) < 0) {
             ans = j;
           }
@@ -572,12 +646,14 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
             break;
           }
         }
-        size_t sz = tupleset.size();
+        size_t sz = tupleset.size(), cnt = 0;
         float ans = 0;
         for (size_t j = 0; j < sz; ++j) {
+          if (tupleset.tuples()[j].values()[value_index].get()->_is_null_()) continue;
+          ++cnt;
           ans += tupleset.tuples()[j].values()[value_index].get()->get_();
         }
-        os << (float)(ans / (1.0 * sz));
+        os << (float)(ans / (1.0 * cnt));
       }
       break;
       default:{
@@ -764,6 +840,10 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
       tuple_sets_.push_back(std::move(tuple_set));
     }
   }
+  
+  // std::stringstream sss;
+  // tuple_sets_.front().print(sss, false);
+  // session_event->set_response(sss.str());
 
   std::stringstream ss;
   if (selects.attributes[0].agg != NO_AGOP) {

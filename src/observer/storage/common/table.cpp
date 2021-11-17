@@ -372,7 +372,7 @@ TableMeta Table::real_table_meta() {
 
 RC Table::make_record(int value_num, const Value *values, char * &record_out, int data_l , int data_r) {
   // 检查字段类型是否一致
-  if ((data_r-data_l) + table_meta_.sys_field_num() != table_meta_.field_num()) {
+  if ((data_r - data_l) + table_meta_.sys_field_num() != table_meta_.field_num()) {
     return RC::SCHEMA_FIELD_MISSING;
   }
 
@@ -380,7 +380,7 @@ RC Table::make_record(int value_num, const Value *values, char * &record_out, in
   for (int i = data_l; i < data_r; i++) {
     const FieldMeta *field = table_meta_.field(i - data_l + normal_field_start_index);
     const Value &value = values[i];
-    if (field->type() != value.type && !(TEXTS == field->type() && CHARS == value.type)) {
+    if (field->type() != value.type && !(TEXTS == field->type() && CHARS == value.type) && !(value._is_null == true && field->nullable() == true)) {
       LOG_ERROR("Invalid value type. field name=%s, type=%d, but given=%d",
         field->name(), field->type(), value.type);
       return RC::SCHEMA_FIELD_TYPE_MISMATCH;
@@ -410,6 +410,8 @@ RC Table::make_record(int value_num, const Value *values, char * &record_out, in
       // }
       int result = insert_text(s);
       memcpy(record + field->offset(), &result, field->len());
+    } else if (value._is_null) {
+      memcpy(record + field->offset(), __NULL_DATA__, field->len());
     } else {
       memcpy(record + field->offset(), value.data, field->len());
     }
