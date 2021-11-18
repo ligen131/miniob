@@ -82,8 +82,14 @@ public:
     this->size = size;
     frame = new Frame[size];
     allocated = new bool[size];
+    nxt = new int[size];
+    pre = new int[size];
+    head = -1;
+    tail = 0;
+    now_size = 0;
     for (int i = 0; i < size; i++) {
       allocated[i] = false;
+      nxt[i] = pre[i] = -1;
       frame[i].pin_count = 0;
     }
   }
@@ -97,10 +103,46 @@ public:
   }
 
   Frame *alloc() {
-    return nullptr; // TODO for test
+    if (now_size < size) {
+      if (head != -1) pre[head] = now_size;
+      pre[now_size] = -1;
+      nxt[now_size] = head;
+      head = now_size;
+      frame[head] = *(new Frame);
+      allocated[head] = true;
+      ++now_size;
+      return &frame[head];
+    }
+    // delete &frame[tail];
+    // printf("alloc %d %d\n",head,tail);
+    pre[head] = tail;
+    nxt[tail] = head;
+    head = tail;
+    tail = pre[tail];
+    nxt[tail] = -1;
+    pre[head] = -1;
+    frame[head] = *(new Frame);
+    return &frame[head]; // TODO for test
   }
 
   Frame *get(int file_desc, PageNum page_num) {
+    for (int now = head; now != -1; now = nxt[now]) {
+      if (frame[now].file_desc == file_desc && frame[now].page.page_num == page_num) {
+        //got one
+        // printf("get %d %d %d %d %d\n",file_desc,page_num,now,head,tail);
+        if (now == head) {
+          return &frame[now];
+        }
+        if (now == tail) tail = pre[tail];
+        if (nxt[now] != -1) pre[nxt[now]] = pre[now];
+        if (pre[now] != -1) nxt[pre[now]] = nxt[now];
+        pre[head] = now;
+        nxt[now] = head;
+        pre[now] = -1;
+        head = now;
+        return &frame[now];
+      }
+    }
     return nullptr; // TODO for test
   }
 
@@ -112,6 +154,11 @@ public:
   int size;
   Frame * frame = nullptr;
   bool *allocated = nullptr;
+  int head;
+  int tail;
+  int *nxt = nullptr;
+  int *pre = nullptr;
+  int now_size;
 };
 
 class DiskBufferPool {
