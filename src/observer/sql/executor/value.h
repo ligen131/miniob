@@ -56,7 +56,7 @@ public:
 
   void _get_(void* &ans) const override {
     // float value = (float)(value_);
-    // ans = malloc(sizeof(value));
+    ans = malloc(sizeof(value_));
     memcpy(ans, &value_, sizeof(value_));
   }
 
