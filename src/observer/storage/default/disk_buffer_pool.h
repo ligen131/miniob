@@ -23,6 +23,7 @@ See the Mulan PSL v2 for more details. */
 #include <time.h>
 
 #include <vector>
+#include <unordered_map>
 
 #include "rc.h"
 
@@ -92,6 +93,7 @@ public:
       nxt[i] = pre[i] = -1;
       frame[i].pin_count = 0;
     }
+    mp.clear();
   }
 
   ~BPManager() {
@@ -100,6 +102,10 @@ public:
     size = 0;
     frame = nullptr;
     allocated = nullptr;
+  }
+
+  int Hash_F(int file_desc, PageNum page_num) {
+    return (99991ll * file_desc + page_num) % 192608017;
   }
 
   Frame *alloc() {
@@ -115,6 +121,7 @@ public:
     }
     // delete &frame[tail];
     // printf("alloc %d %d\n",head,tail);
+    mp[Hash_F(frame[tail].file_desc, frame[tail].page.page_num)] = 0;
     pre[head] = tail;
     nxt[tail] = head;
     head = tail;
@@ -126,22 +133,39 @@ public:
   }
 
   Frame *get(int file_desc, PageNum page_num) {
-    for (int now = head; now != -1; now = nxt[now]) {
-      if (frame[now].file_desc == file_desc && frame[now].page.page_num == page_num) {
-        //got one
-        // printf("get %d %d %d %d %d\n",file_desc,page_num,now,head,tail);
-        if (now == head) {
+    int _find = mp[Hash_F(file_desc, page_num)];
+    if (_find == 0) {
+      for (int now = head; now != -1; now = nxt[now]) {
+        if (frame[now].file_desc == file_desc && frame[now].page.page_num == page_num) {
+          //got one
+          // printf("get %d %d %d %d %d\n",file_desc,page_num,now,head,tail);
+          mp[Hash_F(file_desc, page_num)] = now + 1; // 因为没有 put 操作，故在第一次 get 时 put 一下。
+          if (now == head) {
+            return &frame[now];
+          }
+          if (now == tail) tail = pre[tail];
+          if (nxt[now] != -1) pre[nxt[now]] = pre[now];
+          if (pre[now] != -1) nxt[pre[now]] = nxt[now];
+          pre[head] = now;
+          nxt[now] = head;
+          pre[now] = -1;
+          head = now;
           return &frame[now];
         }
-        if (now == tail) tail = pre[tail];
-        if (nxt[now] != -1) pre[nxt[now]] = pre[now];
-        if (pre[now] != -1) nxt[pre[now]] = nxt[now];
-        pre[head] = now;
-        nxt[now] = head;
-        pre[now] = -1;
-        head = now;
+      }
+    } else {
+      int now = _find - 1;
+      if (now == head) {
         return &frame[now];
       }
+      if (now == tail) tail = pre[tail];
+      if (nxt[now] != -1) pre[nxt[now]] = pre[now];
+      if (pre[now] != -1) nxt[pre[now]] = nxt[now];
+      pre[head] = now;
+      nxt[now] = head;
+      pre[now] = -1;
+      head = now;
+      return &frame[now];
     }
     return nullptr; // TODO for test
   }
@@ -159,6 +183,7 @@ public:
   int *nxt = nullptr;
   int *pre = nullptr;
   int now_size;
+  std::unordered_map<int, int> mp; // 哈希表
 };
 
 class DiskBufferPool {
