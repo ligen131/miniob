@@ -30,7 +30,9 @@ public:
   virtual void to_string(std::ostream &os) const = 0;
   virtual int compare(const TupleValue &other) const = 0;
   virtual float get_() const = 0;
+  virtual void _get_(void* &ans) const = 0;
   virtual int _is_null_() const = 0;
+  virtual AttrType get_type() const = 0;
 private:
 };
 
@@ -52,8 +54,18 @@ public:
     return (float)value_;
   }
 
+  void _get_(void* &ans) const override {
+    float value = (float)(value_);
+    ans = malloc(sizeof(value));
+    memcpy(ans, &value, sizeof(value));
+  }
+
   int _is_null_() const override {
     return 0;
+  }
+
+  AttrType get_type() const override {
+    return FLOATS;
   }
 
 private:
@@ -88,9 +100,19 @@ public:
     return value_;
   }
 
+  void _get_(void* &ans) const override {
+    ans = malloc(sizeof(value_));
+    memcpy(ans, &value_, sizeof(value_));
+  }
+
   int _is_null_() const override {
     return 0;
   }
+
+  AttrType get_type() const override {
+    return FLOATS;
+  }
+
 private:
   float value_;
 };
@@ -135,12 +157,28 @@ public:
     return (float)d;
   }
 
+  void _get_(void* &ans) const override {
+    int d = Check_is_it_date();
+    if (d != 0) {
+      ans = malloc(sizeof(d));
+      memcpy(ans, &d, sizeof(d));
+    } else {
+      ans = strdup(value_.c_str());
+    }
+  }
+
   int _is_null_() const override {
     if (0 == strcmp(value_.c_str(), __NULL_DATA__)) {
       return 1;
     }
     return 0;
   }
+
+  AttrType get_type() const override {
+    if (Check_is_it_date() != 0) return DATES;
+    return CHARS;
+  }
+
 private:
   std::string value_;
 };

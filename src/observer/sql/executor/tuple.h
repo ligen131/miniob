@@ -150,7 +150,9 @@ public:
 
   RC _sort(const Selects &selects) ;
 
-  void print(std::ostream &os, bool is_multi_tables) const;
+  void print(std::ostream &os) const;
+
+  void set_multi_table(bool v) { is_multi_tables = v; }
 public:
   const TupleSchema &schema() const {
     return schema_;
@@ -158,6 +160,7 @@ public:
 private:
   std::vector<Tuple> tuples_;
   TupleSchema schema_;
+  bool is_multi_tables;
 };
 
 class TupleRecordConverter {

@@ -355,6 +355,8 @@ RC do_multi_tables_select_DFS(size_t now, TupleSet &multi_tables_tuple_set) {
             }
             ok_ = 0;
           }
+          default:
+          break;
         }
       } else 
       if (!multi_tables_filter(tuple_sets_[num].tuples()[DFS_tree[num]].values()[f].get()->compare(*((*iter).values()[t].get())), Multi_tables_compop_[now][i])){
@@ -501,26 +503,33 @@ RC multi_tables_select_init(Trx *trx, Session *session, const Selects &selects, 
   return RC::SUCCESS;
 }
 
-RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::ostream &os) {
+RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, TupleSet &ans_tupleset) {
   LOG_INFO("Start to do aggr func.");
 
   // 输出表头
+  // ans_tupleset.set_schema(tupleset.schema());
+  TupleSchema schema;
+  ans_tupleset.set_multi_table(false);
   for (size_t i = 0;i < selects.attr_num ; ++i) {
     switch(selects.attributes[i].agg){
       case COUNT:{
-        os << "count(" << selects.attributes[i].attribute_name << ")";
+        schema.add(FLOATS, selects.relations[0], selects.attributes[i].attribute_name, COUNT);
+        // os << "count(" << selects.attributes[i].attribute_name << ")";
       }
       break;
       case MAX:{
-        os << "max(" << selects.attributes[i].attribute_name << ")";
+        schema.add(FLOATS, selects.relations[0], selects.attributes[i].attribute_name, MAX);
+        // os << "max(" << selects.attributes[i].attribute_name << ")";
       }
       break;
       case MIN:{
-        os << "min(" << selects.attributes[i].attribute_name << ")";
+        schema.add(FLOATS, selects.relations[0], selects.attributes[i].attribute_name, MIN);
+        // os << "min(" << selects.attributes[i].attribute_name << ")";
       }
       break;
       case AVG:{
-        os << "avg(" << selects.attributes[i].attribute_name << ")";
+        schema.add(FLOATS, selects.relations[0], selects.attributes[i].attribute_name, AVG);
+        // os << "avg(" << selects.attributes[i].attribute_name << ")";
       }
       break;
       default:{
@@ -529,10 +538,12 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
       }
       break;
     }
-    if (i != selects.attr_num - 1) os << " | "; else os << std::endl;
+    // if (i != selects.attr_num - 1) os << " | "; else os << std::endl;
   }
+  ans_tupleset.set_schema(schema);
   
   // 输出结果
+  Tuple tuple;
   for (size_t i = 0;i < selects.attr_num ; ++i) {
     switch(selects.attributes[i].agg){
       case COUNT: {
@@ -553,7 +564,8 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
               ++ans;
             }
           }
-          os << ans;
+          // os << ans;
+          tuple.add((float)(ans));
         } else {
           size_t value_index = 0;
           for (std::vector<TupleField>::const_iterator iter = tupleset.schema().fields().begin(); iter != tupleset.schema().fields().end(); ++iter, ++value_index) {
@@ -567,13 +579,15 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
               ++ans;
             }
           }
-          os << ans;
+          // os << ans;
+          tuple.add((float)(ans));
         }
       }
       break;
       case MAX: {
         if(selects.attributes[i].attribute_name[0] >= '0' && selects.attributes[i].attribute_name[0] <= '9'){
-          os << selects.attributes[i].attribute_name;
+          tuple.add((float)(atof(selects.attributes[i].attribute_name)));
+          // os << selects.attributes[i].attribute_name;
           break;
         }
         if(0 == strcmp("*", selects.attributes[i].attribute_name)) {
@@ -589,7 +603,8 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
         size_t sz = tupleset.size(), ans = 0;
         while (ans < sz && tupleset.tuples()[ans].values()[value_index].get()->_is_null_()) ++ans;
         if (ans >= sz) {
-          os << "NULL";
+          tuple.add("NULL",4);
+          // os << "NULL";
           break;
         }
         for (size_t j = ans + 1; j < sz; ++j) {
@@ -598,12 +613,14 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
             ans = j;
           }
         }
-        tupleset.tuples()[ans].values()[value_index].get()->to_string(os);
+        // tupleset.tuples()[ans].values()[value_index].get()->to_string(os);
+        tuple.add((tupleset.tuples()[ans].values()[value_index]));
       }
       break;
       case MIN: {
         if(selects.attributes[i].attribute_name[0] >= '0' && selects.attributes[i].attribute_name[0] <= '9'){
-          os << selects.attributes[i].attribute_name;
+          tuple.add((float)(atof(selects.attributes[i].attribute_name)));
+          // os << selects.attributes[i].attribute_name;
           break;
         }
         if(0 == strcmp("*", selects.attributes[i].attribute_name)) {
@@ -619,7 +636,8 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
         size_t sz = tupleset.size(), ans = 0;
         while (ans < sz && tupleset.tuples()[ans].values()[value_index].get()->_is_null_()) ++ans;
         if (ans >= sz) {
-          os << "NULL";
+          tuple.add("NULL",4);
+          // os << "NULL";
           break;
         }
         for (size_t j = ans + 1; j < sz; ++j) {
@@ -628,12 +646,14 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
             ans = j;
           }
         }
-        tupleset.tuples()[ans].values()[value_index].get()->to_string(os);
+        // tupleset.tuples()[ans].values()[value_index].get()->to_string(os);
+        tuple.add((tupleset.tuples()[ans].values()[value_index]));
       }
       break;
       case AVG: {
         if(selects.attributes[i].attribute_name[0] >= '0' && selects.attributes[i].attribute_name[0] <= '9'){
-          os << selects.attributes[i].attribute_name;
+          tuple.add((float)(atof(selects.attributes[i].attribute_name)));
+          // os << selects.attributes[i].attribute_name;
           break;
         }
         if(0 == strcmp("*", selects.attributes[i].attribute_name)) {
@@ -654,10 +674,12 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
           ans += tupleset.tuples()[j].values()[value_index].get()->get_();
         }
         if (0 == cnt) {
-          os << "NULL";
+          // os << "NULL";
+          tuple.add("NULL",4);
           break;
         }
-        os << (float)(ans / (1.0 * cnt));
+        // os << (float)(ans / (1.0 * cnt));
+        tuple.add((float)(ans / (1.0 * cnt)));
       }
       break;
       default:{
@@ -666,14 +688,15 @@ RC do_aggregation_func_select(TupleSet &tupleset, const Selects &selects, std::o
       }
       break;
     }
-    if (i != selects.attr_num - 1) os << " | "; else os << std::endl;
+    // if (i != selects.attr_num - 1) os << " | "; else os << std::endl;
   }
+  ans_tupleset.add(std::move(tuple));
   LOG_INFO("Do aggr func end.");
   return RC::SUCCESS;
 }
 
 int group_by_index[MAX_NUM], group_by_count[220][MAX_NUM];
-RC do_select_group_by(TupleSet &tupleset, const Selects &selects, std::ostream &os) {
+RC do_select_group_by(TupleSet &tupleset, const Selects &selects) {
   LOG_INFO("Begin to do group.");
   bool _had_agg = 0;
   for (size_t i = 0; i < selects.attr_num; ++i) {
@@ -784,7 +807,7 @@ RC do_select_group_by(TupleSet &tupleset, const Selects &selects, std::ostream &
   int ind = 0;
   for (std::vector<Tuple>::const_iterator iter = tupleset.tuples().begin(); iter != tupleset.tuples().end(); ++iter, ++ind) {
     Tuple tuple;
-    for (int i = 0, index = 0; i < selects.attr_num; ++i, ++index) {
+    for (size_t i = 0, index = 0; i < selects.attr_num; ++i, ++index) {
       if (selects.attributes[i].agg == AVG) {
         tuple.add(((*iter).values()[index].get()->get_()) / (float)(1.000 * group_by_count[ind][index]));
       } else {
@@ -797,15 +820,9 @@ RC do_select_group_by(TupleSet &tupleset, const Selects &selects, std::ostream &
   return RC::SUCCESS;
 }
 
-// 这里没有对输入的某些信息做合法性校验，比如查询的列名、where条件中的列名等，没有做必要的合法性校验
-// 需要补充上这一部分. 校验部分也可以放在resolve，不过跟execution放一起也没有关系
-RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_event) {
-  LOG_INFO("Begin to do select.");
-
+RC do_sub_select(const char *db, Trx *trx, Session *session, const Selects &selects, TupleSet &ans_tupleset) {
+  LOG_INFO("Begin to do SUB_select.");
   RC rc = RC::SUCCESS;
-  Session *session = session_event->get_client()->session;
-  Trx *trx = session->current_trx();
-  const Selects &selects = sql->sstr.selection;
 
   // 把所有的表和只跟这张表关联的condition都拿出来，生成最底层的select 执行节点
   std::vector<SelectExeNode *> select_nodes;
@@ -845,9 +862,9 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
     }
   }
   
-  std::stringstream ss;
+  // std::stringstream ss;
   if (selects.attributes[0].agg != NO_AGOP) {
-    rc = do_aggregation_func_select(tuple_sets_.front(), selects, ss);
+    rc = do_aggregation_func_select(tuple_sets_.front(), selects, ans_tupleset);
     if(rc != RC::SUCCESS) {
       LOG_ERROR("Failed to do aggregation function select.");
       for (SelectExeNode *& tmp_node: select_nodes) {
@@ -885,12 +902,14 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
       LOG_ERROR("Fail to do order.");
       return rc;
     }
-    rc = do_select_group_by(multi_tables_tuple_set, selects, ss);
+    rc = do_select_group_by(multi_tables_tuple_set, selects);
     if (rc != RC::SUCCESS) {
       LOG_ERROR("Fail to do group.");
       return rc;
     }
-    multi_tables_tuple_set.print(ss, true);
+    multi_tables_tuple_set.set_multi_table(true);
+    ans_tupleset = std::move(multi_tables_tuple_set);
+    // multi_tables_tuple_set.print(ss, true);
   } else {
     // 当前只查询一张表，直接返回结果即可
     rc = tuple_sets_.front()._sort(selects);
@@ -898,17 +917,129 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
       LOG_ERROR("Fail to do order.");
       return rc;
     }
-    rc = do_select_group_by(tuple_sets_.front(), selects, ss);
+    rc = do_select_group_by(tuple_sets_.front(), selects);
     if (rc != RC::SUCCESS) {
       LOG_ERROR("Fail to do group.");
       return rc;
     }
-    tuple_sets_.front().print(ss, false);
+    tuple_sets_.front().set_multi_table(false);
+    ans_tupleset = std::move(tuple_sets_.front());
+    // tuple_sets_.front().print(ss, false);
   }
 
   for (SelectExeNode *& tmp_node: select_nodes) {
     delete tmp_node;
   }
+  return RC::SUCCESS;
+}
+
+// 这里没有对输入的某些信息做合法性校验，比如查询的列名、where条件中的列名等，没有做必要的合法性校验
+// 需要补充上这一部分. 校验部分也可以放在resolve，不过跟execution放一起也没有关系
+RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_event) {
+  LOG_INFO("Begin to do select.");
+
+  RC rc = RC::SUCCESS;
+  Session *session = session_event->get_client()->session;
+  Trx *trx = session->current_trx();
+  const Selects &selects = sql->sstr.selection[0];
+
+  std::stringstream ss;
+  TupleSet ans_tupleset;
+  if (selects.is_sub_query_exist) {
+    TupleSet sub_ans_tupleset;
+    const Selects &sub_selects = sql->sstr.selection[1];
+    rc = do_sub_select(db, trx, session, sub_selects, sub_ans_tupleset);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Do sub select failed.");
+      end_trx_if_need(session, trx, true);
+      return rc;
+    }
+    for (size_t i = 0; i < selects.condition_num; ++i) {
+      if (selects.conditions[i].right_is_sub_query) {
+        Selects select_for_father = selects;
+        switch (selects.conditions[i].comp) {
+          case EQUAL_TO:
+          case LESS_EQUAL:
+          case NOT_EQUAL:
+          case LESS_THAN:
+          case GREAT_EQUAL:
+          case GREAT_THAN: {
+            select_for_father.conditions[i].right_value.type = sub_ans_tupleset.tuples()[0].values().front().get()->get_type();
+            sub_ans_tupleset.tuples()[0].values().front().get()->_get_(select_for_father.conditions[i].right_value.data);
+            rc = do_sub_select(db, trx, session, select_for_father, ans_tupleset);
+            if (rc != RC::SUCCESS) {
+              LOG_ERROR("Do father select failed.");
+              end_trx_if_need(session, trx, true);
+              return rc;
+            }
+          }
+          break;
+          case COMP_IN: {
+            select_for_father.conditions[i].comp = EQUAL_TO;
+            size_t tuple_sz = sub_ans_tupleset.tuples().size();
+            for (size_t j = 0; j < tuple_sz; ++j) {
+              TupleSet one_condition_tupleset;
+              select_for_father.conditions[i].right_value.type = sub_ans_tupleset.tuples()[j].values().front().get()->get_type();
+              sub_ans_tupleset.tuples()[j].values().front().get()->_get_(select_for_father.conditions[i].right_value.data);
+              rc = do_sub_select(db, trx, session, select_for_father, one_condition_tupleset);
+              if (rc != RC::SUCCESS) {
+                LOG_ERROR("Do father select failed.");
+                end_trx_if_need(session, trx, true);
+                return rc;
+              }
+              if (j == 0) {
+                ans_tupleset.set_schema(one_condition_tupleset.schema());
+                ans_tupleset.set_multi_table((bool)(selects.relation_num > 1));
+              }
+              size_t sz = one_condition_tupleset.tuples().size();
+              for (size_t k = 0; k < sz; ++k) {
+                Tuple tuple;
+                for (std::vector<std::shared_ptr<TupleValue>>::const_iterator iter = one_condition_tupleset.tuples()[k].values().begin();
+                      iter != one_condition_tupleset.tuples()[k].values().end(); ++iter) {
+                  tuple.add((*iter));
+                }
+                ans_tupleset.add(std::move(tuple));
+              }
+            }
+          }
+          break;
+          case COMP_NOT_IN: {
+            size_t tuple_sz = sub_ans_tupleset.tuples().size();
+            select_for_father.conditions[i].comp = NOT_EQUAL;
+            select_for_father.conditions[i].right_value.type = sub_ans_tupleset.tuples()[0].values().front().get()->get_type();
+            sub_ans_tupleset.tuples()[0].values().front().get()->_get_(select_for_father.conditions[i].right_value.data);
+            for (size_t j = 1; j < tuple_sz; ++j) {
+              select_for_father.conditions[select_for_father.condition_num] = select_for_father.conditions[i];
+              select_for_father.conditions[select_for_father.condition_num].right_value.data = nullptr;
+              sub_ans_tupleset.tuples()[j].values().front().get()->_get_(select_for_father.conditions[select_for_father.condition_num].right_value.data);
+              ++select_for_father.condition_num;
+            }
+            rc = do_sub_select(db, trx, session, select_for_father, ans_tupleset);
+            if (rc != RC::SUCCESS) {
+              LOG_ERROR("Do father select failed.");
+              end_trx_if_need(session, trx, true);
+              return rc;
+            }
+          }
+          break;
+
+          case COMP_IS_NOT: 
+          case COMP_IS: 
+          default:
+          break;
+        }
+      }
+    }
+  } else {
+    rc = do_sub_select(db, trx, session, selects, ans_tupleset);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Do single select failed.");
+      end_trx_if_need(session, trx, true);
+      return rc;
+    }
+  }
+  ans_tupleset.print(ss);
+
   session_event->set_response(ss.str());
   end_trx_if_need(session, trx, true);
   return rc;
@@ -935,7 +1066,7 @@ RC create_selection_executor(Trx *trx, const Selects &selects, const char *db, c
   if (selects.relation_num > 1) {
     TupleSchema::from_table(table, schema, NO_AGOP);
   }else 
-  for (int i = 0; i < selects.attr_num; i++) {
+  for (size_t i = 0; i < selects.attr_num; i++) {
     const RelAttr &attr = selects.attributes[i];
     if (nullptr == attr.relation_name || 0 == strcmp(table_name, attr.relation_name)) {
       if (0 == strcmp("*", attr.attribute_name) || (attr.attribute_name[0] >= '0' && attr.attribute_name[0] <= '9')) {

@@ -159,9 +159,19 @@ void condition_init(Condition *condition, CompOp comp,
   condition->right_is_attr = right_is_attr;
   if (right_is_attr) {
     condition->right_attr = *right_attr;
+  } else if (right_value == nullptr) {
+    condition->right_value.data = nullptr;
+    condition->right_value.type = UNDEFINED;
+    condition->right_value._is_null = 0;
   } else {
     condition->right_value = *right_value;
   }
+  condition->right_is_sub_query = 0;
+}
+void condition_init_(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
+    int right_is_attr, RelAttr *right_attr, Value *right_value, int right_is_sub) {
+  condition_init(condition, comp, left_is_attr, left_attr, left_value, right_is_attr, right_attr, right_value);
+  condition->right_is_sub_query = right_is_sub;
 }
 void condition_destroy(Condition *condition) {
   if (condition->left_is_attr) {
@@ -415,7 +425,9 @@ Query *query_create() {
 void query_reset(Query *query) {
   switch (query->flag) {
     case SCF_SELECT: {
-      selects_destroy(&query->sstr.selection);
+      selects_destroy(&query->sstr.selection[0]);
+      selects_destroy(&query->sstr.selection[1]);
+      selects_destroy(&query->sstr.selection[2]);
     }
     break;
     case SCF_INSERT: {

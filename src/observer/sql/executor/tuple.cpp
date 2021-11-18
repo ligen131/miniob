@@ -269,7 +269,7 @@ RC TupleSet::_sort(const Selects &selects) {
   return RC::SUCCESS;
 }
 
-void TupleSet::print(std::ostream &os, bool is_multi_tables) const {
+void TupleSet::print(std::ostream &os) const {
   if (schema_.fields().empty()) {
     LOG_WARN("Got empty schema");
     return;
