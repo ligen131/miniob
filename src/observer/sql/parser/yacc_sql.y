@@ -74,6 +74,22 @@ void yyerror(yyscan_t scanner, const char *str)
   printf("parse sql failed. error=%s", str);
 }
 
+CompOp Exchange_CompOp(CompOp comp) {
+  switch (comp) {
+    case LESS_EQUAL: 
+      return GREAT_EQUAL;
+    case LESS_THAN:
+      return GREAT_THAN;
+    case GREAT_EQUAL:
+      return LESS_EQUAL;
+    case GREAT_THAN:
+      return LESS_THAN;
+    default:
+    break;
+  }
+  return comp;
+}
+
 ParserContext *get_context(yyscan_t scanner)
 {
   return (ParserContext *)yyget_extra(scanner);
@@ -889,6 +905,41 @@ condition:
 
 			Condition condition;
 			condition_init_(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, NULL, 1);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=$1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 1;
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=$3;
+
+		}
+    |sub_select comOp ID DOT ID
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $3, $5);
+
+			Condition condition;
+			condition_init_(&condition, Exchange_CompOp(CONTEXT->comp), 1, &left_attr, NULL, 0, NULL, NULL, 1);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;		//属性
+			// $$->left_attr.relation_name=$1;
+			// $$->left_attr.attribute_name=$3;
+			// $$->comp =CONTEXT->comp;
+			// $$->right_is_attr = 1;		//属性
+			// $$->right_attr.relation_name=$5;
+			// $$->right_attr.attribute_name=$7;
+    }
+	|sub_select comOp ID
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $3);
+
+			Condition condition;
+			condition_init_(&condition, Exchange_CompOp(CONTEXT->comp), 1, &left_attr, NULL, 0, NULL, NULL, 1);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 			// $$=( Condition *)malloc(sizeof( Condition));
 			// $$->left_is_attr = 1;
