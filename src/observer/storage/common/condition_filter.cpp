@@ -181,18 +181,20 @@ bool DefaultConditionFilter::filter(const Record &rec) const
 {
   char *left_value = nullptr;
   char *right_value = nullptr;
-  char s[256] = {""};
+  // char s[256] = {""};
 
   if (left_.is_attr) {  // value
-    strncpy(s, (char *)(rec.data + left_.attr_offset), left_.attr_length);
-    left_value = s;
+    left_value = (char *)(rec.data + left_.attr_offset);
+    // strncpy(s, (char *)(rec.data + left_.attr_offset), left_.attr_length);
+    // left_value = s;
   } else {
     left_value = (char *)left_.value;
   }
 
   if (right_.is_attr) {
-    strncpy(s, (char *)(rec.data + right_.attr_offset), right_.attr_length);
-    right_value = s;
+    right_value = (char *)(rec.data + right_.attr_offset);
+    // strncpy(s, (char *)(rec.data + right_.attr_offset), right_.attr_length);
+    // right_value = s;
   } else {
     right_value = (char *)right_.value;
   }
