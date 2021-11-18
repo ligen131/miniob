@@ -55,9 +55,9 @@ public:
   }
 
   void _get_(void* &ans) const override {
-    float value = (float)(value_);
-    ans = malloc(sizeof(value));
-    memcpy(ans, &value, sizeof(value));
+    // float value = (float)(value_);
+    // ans = malloc(sizeof(value));
+    memcpy(ans, &value_, sizeof(value_));
   }
 
   int _is_null_() const override {
@@ -65,7 +65,7 @@ public:
   }
 
   AttrType get_type() const override {
-    return FLOATS;
+    return INTS;
   }
 
 private:

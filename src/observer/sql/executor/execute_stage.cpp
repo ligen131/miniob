@@ -954,6 +954,11 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
       end_trx_if_need(session, trx, true);
       return rc;
     }
+    if (sub_ans_tupleset.schema().fields().size() != 1) {
+      LOG_ERROR("Invalid input.");
+      end_trx_if_need(session, trx, true);
+      return RC::GENERIC_ERROR;
+    }
     for (size_t i = 0; i < selects.condition_num; ++i) {
       if (selects.conditions[i].right_is_sub_query) {
         Selects select_for_father = selects;
