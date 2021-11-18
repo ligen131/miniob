@@ -204,7 +204,7 @@ void TupleSchema::print(std::ostream &os, bool is_multi_tables) const {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-TupleSet::TupleSet(TupleSet &&other) : tuples_(std::move(other.tuples_)), schema_(other.schema_){
+TupleSet::TupleSet(TupleSet &&other) : tuples_(std::move(other.tuples_)), schema_(other.schema_), is_multi_tables(other.is_multi_tables) {
   other.schema_.clear();
 }
 
@@ -219,6 +219,8 @@ TupleSet &TupleSet::operator=(TupleSet &&other) {
 
   tuples_.clear();
   tuples_.swap(other.tuples_);
+
+  is_multi_tables = other.is_multi_tables;
   return *this;
 }
 
