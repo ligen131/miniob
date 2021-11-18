@@ -969,6 +969,11 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
           case LESS_THAN:
           case GREAT_EQUAL:
           case GREAT_THAN: {
+            if (sub_ans_tupleset.tuples().size() > 1) {
+              LOG_ERROR("Invalid input.");
+              end_trx_if_need(session, trx, true);
+              return RC::GENERIC_ERROR;
+            }
             if (sub_ans_tupleset.tuples().size() == 0 || sub_ans_tupleset.tuples()[0].values().front().get()->_is_null_()) {
               select_for_father.conditions[i].right_value.type = UNDEFINED;
               select_for_father.conditions[i].right_value._is_null = true;
