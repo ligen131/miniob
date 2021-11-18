@@ -933,6 +933,123 @@ RC do_sub_select(const char *db, Trx *trx, Session *session, const Selects &sele
   return RC::SUCCESS;
 }
 
+RC do_sub_select_filter(const char *db, Trx *trx, Session *session, int i, const Selects &selects, TupleSet &sub_ans_tupleset, TupleSet &ans_tupleset) {
+  RC rc = RC::SUCCESS;
+  if (sub_ans_tupleset.schema().fields().size() != 1) {
+    LOG_ERROR("Invalid input.");
+    end_trx_if_need(session, trx, true);
+    return RC::GENERIC_ERROR;
+  }
+  Selects select_for_father = selects;
+  switch (selects.conditions[i].comp) {
+    case EQUAL_TO:
+    case LESS_EQUAL:
+    case NOT_EQUAL:
+    case LESS_THAN:
+    case GREAT_EQUAL:
+    case GREAT_THAN: {
+      if (sub_ans_tupleset.tuples().size() > 1) {
+        LOG_ERROR("Invalid input.");
+        end_trx_if_need(session, trx, true);
+        return RC::GENERIC_ERROR;
+      }
+      if (sub_ans_tupleset.tuples().size() == 0 || sub_ans_tupleset.tuples()[0].values().front().get()->_is_null_()) {
+        select_for_father.conditions[i].right_value.type = UNDEFINED;
+        select_for_father.conditions[i].right_value._is_null = true;
+        select_for_father.conditions[i].right_value.data = strdup(__NULL_DATA__);
+      } else {
+        select_for_father.conditions[i].right_value.type = sub_ans_tupleset.tuples()[0].values().front().get()->get_type();
+        sub_ans_tupleset.tuples()[0].values().front().get()->_get_(select_for_father.conditions[i].right_value.data);
+      }
+      rc = do_sub_select(db, trx, session, select_for_father, ans_tupleset);
+      if (rc != RC::SUCCESS) {
+        LOG_ERROR("Do father select failed.");
+        end_trx_if_need(session, trx, true);
+        return rc;
+      }
+    }
+    break;
+    case COMP_IN: {
+      select_for_father.conditions[i].comp = EQUAL_TO;
+      size_t tuple_sz = sub_ans_tupleset.tuples().size();
+      if (sub_ans_tupleset.tuples().size() == 0 || sub_ans_tupleset.tuples()[0].values().front().get()->_is_null_()) {
+        select_for_father.conditions[i].right_value.type = UNDEFINED;
+        select_for_father.conditions[i].right_value._is_null = true;
+        select_for_father.conditions[i].right_value.data = strdup(__NULL_DATA__);
+        rc = do_sub_select(db, trx, session, select_for_father, ans_tupleset);
+        if (rc != RC::SUCCESS) {
+          LOG_ERROR("Do father select failed.");
+          end_trx_if_need(session, trx, true);
+          return rc;
+        }
+      } else 
+      for (size_t j = 0; j < tuple_sz; ++j) {
+        TupleSet one_condition_tupleset;
+        select_for_father.conditions[i].right_value.type = sub_ans_tupleset.tuples()[j].values().front().get()->get_type();
+        sub_ans_tupleset.tuples()[j].values().front().get()->_get_(select_for_father.conditions[i].right_value.data);
+        rc = do_sub_select(db, trx, session, select_for_father, one_condition_tupleset);
+        if (rc != RC::SUCCESS) {
+          LOG_ERROR("Do father select failed.");
+          end_trx_if_need(session, trx, true);
+          return rc;
+        }
+        if (j == 0) {
+          ans_tupleset.set_schema(one_condition_tupleset.schema());
+          ans_tupleset.set_multi_table((bool)(selects.relation_num > 1));
+        }
+        size_t sz = one_condition_tupleset.tuples().size();
+        for (size_t k = 0; k < sz; ++k) {
+          Tuple tuple;
+          for (std::vector<std::shared_ptr<TupleValue>>::const_iterator iter = one_condition_tupleset.tuples()[k].values().begin();
+                iter != one_condition_tupleset.tuples()[k].values().end(); ++iter) {
+            tuple.add((*iter));
+          }
+          ans_tupleset.add(std::move(tuple));
+        }
+      }
+    }
+    break;
+    case COMP_NOT_IN: {
+      size_t tuple_sz = sub_ans_tupleset.tuples().size();
+      if (sub_ans_tupleset.tuples().size() == 0 || sub_ans_tupleset.tuples()[0].values().front().get()->_is_null_()) {
+        select_for_father.conditions[i].comp = COMP_IS_NOT;
+        select_for_father.conditions[i].right_value.type = UNDEFINED;
+        select_for_father.conditions[i].right_value._is_null = true;
+        select_for_father.conditions[i].right_value.data = strdup(__NULL_DATA__);
+        rc = do_sub_select(db, trx, session, select_for_father, ans_tupleset);
+        if (rc != RC::SUCCESS) {
+          LOG_ERROR("Do father select failed.");
+          end_trx_if_need(session, trx, true);
+          return rc;
+        }
+      } else {
+        select_for_father.conditions[i].comp = NOT_EQUAL;
+        select_for_father.conditions[i].right_value.type = sub_ans_tupleset.tuples()[0].values().front().get()->get_type();
+        sub_ans_tupleset.tuples()[0].values().front().get()->_get_(select_for_father.conditions[i].right_value.data);
+        for (size_t j = 1; j < tuple_sz; ++j) {
+          select_for_father.conditions[select_for_father.condition_num] = select_for_father.conditions[i];
+          select_for_father.conditions[select_for_father.condition_num].right_value.data = nullptr;
+          sub_ans_tupleset.tuples()[j].values().front().get()->_get_(select_for_father.conditions[select_for_father.condition_num].right_value.data);
+          ++select_for_father.condition_num;
+        }
+        rc = do_sub_select(db, trx, session, select_for_father, ans_tupleset);
+        if (rc != RC::SUCCESS) {
+          LOG_ERROR("Do father select failed.");
+          end_trx_if_need(session, trx, true);
+          return rc;
+        }
+      }
+    }
+    break;
+
+    case COMP_IS_NOT: 
+    case COMP_IS: 
+    default:
+    break;
+  }
+  return RC::SUCCESS;
+}
+
 // 这里没有对输入的某些信息做合法性校验，比如查询的列名、where条件中的列名等，没有做必要的合法性校验
 // 需要补充上这一部分. 校验部分也可以放在resolve，不过跟execution放一起也没有关系
 RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_event) {
@@ -945,9 +1062,25 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
 
   std::stringstream ss;
   TupleSet ans_tupleset;
-  if (selects.is_sub_query_exist) {
+  if (selects.is_sub_query_exist == 1) {
     TupleSet sub_ans_tupleset;
     const Selects &sub_selects = sql->sstr.selection[1];
+    rc = do_sub_select(db, trx, session, sub_selects, sub_ans_tupleset);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Do sub select failed.");
+      end_trx_if_need(session, trx, true);
+      return rc;
+    }
+    for (size_t i = 0; i < selects.condition_num; ++i) {
+      if (selects.conditions[i].right_is_sub_query) {
+        rc = do_sub_select_filter(db, trx, session, i, selects, sub_ans_tupleset, ans_tupleset);
+        if (rc != RC::SUCCESS) return rc;
+      }
+    }
+  } else if (selects.is_sub_query_exist == 2) {
+    TupleSet sub_ans_tupleset, sub2_ans_tupleset;
+    const Selects &sub_selects = sql->sstr.selection[1], &sub2_selects = sql->sstr.selection[2];
+
     rc = do_sub_select(db, trx, session, sub_selects, sub_ans_tupleset);
     if (rc != RC::SUCCESS) {
       LOG_ERROR("Do sub select failed.");
@@ -959,118 +1092,138 @@ RC ExecuteStage::do_select(const char *db, Query *sql, SessionEvent *session_eve
       end_trx_if_need(session, trx, true);
       return RC::GENERIC_ERROR;
     }
-    for (size_t i = 0; i < selects.condition_num; ++i) {
-      if (selects.conditions[i].right_is_sub_query) {
-        Selects select_for_father = selects;
-        switch (selects.conditions[i].comp) {
-          case EQUAL_TO:
-          case LESS_EQUAL:
-          case NOT_EQUAL:
-          case LESS_THAN:
-          case GREAT_EQUAL:
-          case GREAT_THAN: {
-            if (sub_ans_tupleset.tuples().size() > 1) {
-              LOG_ERROR("Invalid input.");
-              end_trx_if_need(session, trx, true);
-              return RC::GENERIC_ERROR;
-            }
-            if (sub_ans_tupleset.tuples().size() == 0 || sub_ans_tupleset.tuples()[0].values().front().get()->_is_null_()) {
-              select_for_father.conditions[i].right_value.type = UNDEFINED;
-              select_for_father.conditions[i].right_value._is_null = true;
-              select_for_father.conditions[i].right_value.data = strdup(__NULL_DATA__);
-            } else {
-              select_for_father.conditions[i].right_value.type = sub_ans_tupleset.tuples()[0].values().front().get()->get_type();
-              sub_ans_tupleset.tuples()[0].values().front().get()->_get_(select_for_father.conditions[i].right_value.data);
-            }
-            rc = do_sub_select(db, trx, session, select_for_father, ans_tupleset);
-            if (rc != RC::SUCCESS) {
-              LOG_ERROR("Do father select failed.");
-              end_trx_if_need(session, trx, true);
-              return rc;
-            }
-          }
-          break;
-          case COMP_IN: {
-            select_for_father.conditions[i].comp = EQUAL_TO;
-            size_t tuple_sz = sub_ans_tupleset.tuples().size();
-            if (sub_ans_tupleset.tuples().size() == 0 || sub_ans_tupleset.tuples()[0].values().front().get()->_is_null_()) {
-              select_for_father.conditions[i].right_value.type = UNDEFINED;
-              select_for_father.conditions[i].right_value._is_null = true;
-              select_for_father.conditions[i].right_value.data = strdup(__NULL_DATA__);
-              rc = do_sub_select(db, trx, session, select_for_father, ans_tupleset);
-              if (rc != RC::SUCCESS) {
-                LOG_ERROR("Do father select failed.");
-                end_trx_if_need(session, trx, true);
-                return rc;
-              }
-            } else 
-            for (size_t j = 0; j < tuple_sz; ++j) {
-              TupleSet one_condition_tupleset;
-              select_for_father.conditions[i].right_value.type = sub_ans_tupleset.tuples()[j].values().front().get()->get_type();
-              sub_ans_tupleset.tuples()[j].values().front().get()->_get_(select_for_father.conditions[i].right_value.data);
-              rc = do_sub_select(db, trx, session, select_for_father, one_condition_tupleset);
-              if (rc != RC::SUCCESS) {
-                LOG_ERROR("Do father select failed.");
-                end_trx_if_need(session, trx, true);
-                return rc;
-              }
-              if (j == 0) {
-                ans_tupleset.set_schema(one_condition_tupleset.schema());
-                ans_tupleset.set_multi_table((bool)(selects.relation_num > 1));
-              }
-              size_t sz = one_condition_tupleset.tuples().size();
-              for (size_t k = 0; k < sz; ++k) {
-                Tuple tuple;
-                for (std::vector<std::shared_ptr<TupleValue>>::const_iterator iter = one_condition_tupleset.tuples()[k].values().begin();
-                      iter != one_condition_tupleset.tuples()[k].values().end(); ++iter) {
-                  tuple.add((*iter));
-                }
-                ans_tupleset.add(std::move(tuple));
-              }
-            }
-          }
-          break;
-          case COMP_NOT_IN: {
-            size_t tuple_sz = sub_ans_tupleset.tuples().size();
-            if (sub_ans_tupleset.tuples().size() == 0 || sub_ans_tupleset.tuples()[0].values().front().get()->_is_null_()) {
-              select_for_father.conditions[i].comp = COMP_IS_NOT;
-              select_for_father.conditions[i].right_value.type = UNDEFINED;
-              select_for_father.conditions[i].right_value._is_null = true;
-              select_for_father.conditions[i].right_value.data = strdup(__NULL_DATA__);
-              rc = do_sub_select(db, trx, session, select_for_father, ans_tupleset);
-              if (rc != RC::SUCCESS) {
-                LOG_ERROR("Do father select failed.");
-                end_trx_if_need(session, trx, true);
-                return rc;
-              }
-            } else {
-              select_for_father.conditions[i].comp = NOT_EQUAL;
-              select_for_father.conditions[i].right_value.type = sub_ans_tupleset.tuples()[0].values().front().get()->get_type();
-              sub_ans_tupleset.tuples()[0].values().front().get()->_get_(select_for_father.conditions[i].right_value.data);
-              for (size_t j = 1; j < tuple_sz; ++j) {
-                select_for_father.conditions[select_for_father.condition_num] = select_for_father.conditions[i];
-                select_for_father.conditions[select_for_father.condition_num].right_value.data = nullptr;
-                sub_ans_tupleset.tuples()[j].values().front().get()->_get_(select_for_father.conditions[select_for_father.condition_num].right_value.data);
-                ++select_for_father.condition_num;
-              }
-              rc = do_sub_select(db, trx, session, select_for_father, ans_tupleset);
-              if (rc != RC::SUCCESS) {
-                LOG_ERROR("Do father select failed.");
-                end_trx_if_need(session, trx, true);
-                return rc;
-              }
-            }
-          }
-          break;
 
-          case COMP_IS_NOT: 
-          case COMP_IS: 
-          default:
-          break;
-        }
-      }
+    rc = do_sub_select(db, trx, session, sub2_selects, sub2_ans_tupleset);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Do sub2 select failed.");
+      end_trx_if_need(session, trx, true);
+      return rc;
     }
-  } else {
+    if (sub2_ans_tupleset.schema().fields().size() != 1) {
+      LOG_ERROR("Invalid input.");
+      end_trx_if_need(session, trx, true);
+      return RC::GENERIC_ERROR;
+    }
+
+    if (selects.conditions[0].left_is_sub_query) {
+      Selects select_for_father = selects;
+      if (sub_ans_tupleset.tuples().size() > 1) {
+        LOG_ERROR("Invalid input.");
+        end_trx_if_need(session, trx, true);
+        return RC::GENERIC_ERROR;
+      }
+      if (sub2_ans_tupleset.tuples().size() > 1) {
+        LOG_ERROR("Invalid input.");
+        end_trx_if_need(session, trx, true);
+        return RC::GENERIC_ERROR;
+      }
+      if (sub_ans_tupleset.tuples().size() == 0 || sub_ans_tupleset.tuples()[0].values().front().get()->_is_null_()) {
+        select_for_father.conditions[0].left_value.type = UNDEFINED;
+        select_for_father.conditions[0].left_value._is_null = true;
+        select_for_father.conditions[0].left_value.data = strdup(__NULL_DATA__);
+      } else {
+        select_for_father.conditions[0].left_value.type = sub_ans_tupleset.tuples()[0].values().front().get()->get_type();
+        sub_ans_tupleset.tuples()[0].values().front().get()->_get_(select_for_father.conditions[0].left_value.data);
+      }
+      if (sub2_ans_tupleset.tuples().size() == 0 || sub2_ans_tupleset.tuples()[0].values().front().get()->_is_null_()) {
+        select_for_father.conditions[0].right_value.type = UNDEFINED;
+        select_for_father.conditions[0].right_value._is_null = true;
+        select_for_father.conditions[0].right_value.data = strdup(__NULL_DATA__);
+      } else {
+        select_for_father.conditions[0].right_value.type = sub2_ans_tupleset.tuples()[0].values().front().get()->get_type();
+        sub2_ans_tupleset.tuples()[0].values().front().get()->_get_(select_for_father.conditions[0].right_value.data);
+      }
+      rc = do_sub_select(db, trx, session, select_for_father, ans_tupleset);
+      if (rc != RC::SUCCESS) {
+        LOG_ERROR("Do father select failed.");
+        end_trx_if_need(session, trx, true);
+        return rc;
+      }
+    } else {
+      Selects select_for_father = selects;
+      if (select_for_father.conditions[0].comp == COMP_IN) {
+        Condition _swap_cd_ = select_for_father.conditions[1];
+        select_for_father.conditions[1] = select_for_father.conditions[0];
+        select_for_father.conditions[0] = _swap_cd_;
+        TupleSet _swap_tupleset_ = std::move(sub_ans_tupleset);
+        sub_ans_tupleset = std::move(sub2_ans_tupleset);
+        sub2_ans_tupleset = std::move(_swap_tupleset_);
+      }
+      switch (select_for_father.conditions[0].comp) {
+        case EQUAL_TO:
+        case LESS_EQUAL:
+        case NOT_EQUAL:
+        case LESS_THAN:
+        case GREAT_EQUAL:
+        case GREAT_THAN: {
+          if (sub_ans_tupleset.tuples().size() > 1) {
+            LOG_ERROR("Invalid input in sub 1.");
+            end_trx_if_need(session, trx, true);
+            return RC::GENERIC_ERROR;
+          }
+          if (sub_ans_tupleset.tuples().size() == 0 || sub_ans_tupleset.tuples()[0].values().front().get()->_is_null_()) {
+            select_for_father.conditions[0].right_value.type = UNDEFINED;
+            select_for_father.conditions[0].right_value._is_null = true;
+            select_for_father.conditions[0].right_value.data = strdup(__NULL_DATA__);
+          } else {
+            select_for_father.conditions[0].right_value.type = sub_ans_tupleset.tuples()[0].values().front().get()->get_type();
+            sub_ans_tupleset.tuples()[0].values().front().get()->_get_(select_for_father.conditions[0].right_value.data);
+          }
+        }
+        break;
+        case COMP_NOT_IN: {
+          size_t tuple_sz = sub_ans_tupleset.tuples().size();
+          if (sub_ans_tupleset.tuples().size() == 0 || sub_ans_tupleset.tuples()[0].values().front().get()->_is_null_()) {
+            select_for_father.conditions[0].comp = COMP_IS_NOT;
+            select_for_father.conditions[0].right_value.type = UNDEFINED;
+            select_for_father.conditions[0].right_value._is_null = true;
+            select_for_father.conditions[0].right_value.data = strdup(__NULL_DATA__);
+          } else {
+            select_for_father.conditions[0].comp = NOT_EQUAL;
+            select_for_father.conditions[0].right_value.type = sub_ans_tupleset.tuples()[0].values().front().get()->get_type();
+            sub_ans_tupleset.tuples()[0].values().front().get()->_get_(select_for_father.conditions[0].right_value.data);
+            for (size_t j = 1; j < tuple_sz; ++j) {
+              select_for_father.conditions[select_for_father.condition_num] = select_for_father.conditions[0];
+              select_for_father.conditions[select_for_father.condition_num].right_value.data = nullptr;
+              sub_ans_tupleset.tuples()[j].values().front().get()->_get_(select_for_father.conditions[select_for_father.condition_num].right_value.data);
+              ++select_for_father.condition_num;
+            }
+          }
+        }
+        break;
+
+        default:
+        break;
+      }
+      rc = do_sub_select_filter(db, trx, session, 1, select_for_father, sub2_ans_tupleset, ans_tupleset);
+      if (rc != RC::SUCCESS) return rc;
+    }
+    
+  } else if (selects.is_sub_query_exist > 2) {
+    
+    TupleSet sub_ans_tupleset, sub_sub_ans_tupleset;
+    const Selects &sub_selects = sql->sstr.selection[1], &sub_sub_selects = sql->sstr.selection[2];
+    rc = do_sub_select(db, trx, session, sub_sub_selects, sub_sub_ans_tupleset);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Do sub_sub select failed.");
+      end_trx_if_need(session, trx, true);
+      return rc;
+    }
+
+    rc = do_sub_select_filter(db, trx, session, 0, sub_selects, sub_sub_ans_tupleset, sub_ans_tupleset);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Do sub select failed.");
+      end_trx_if_need(session, trx, true);
+      return rc;
+    }
+
+    rc = do_sub_select_filter(db, trx, session, 0, selects, sub_ans_tupleset, ans_tupleset);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Do sub select failed.");
+      end_trx_if_need(session, trx, true);
+      return rc;
+    }
+  } else if (selects.is_sub_query_exist == 0){
     rc = do_sub_select(db, trx, session, selects, ans_tupleset);
     if (rc != RC::SUCCESS) {
       LOG_ERROR("Do single select failed.");

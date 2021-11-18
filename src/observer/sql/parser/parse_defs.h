@@ -83,7 +83,7 @@ typedef struct _Value {
 typedef struct _Condition {
   int left_is_attr;    // TRUE if left-hand side is an attribute
                        // 1时，操作符左边是属性名，0时，是属性值
-  // int left_is_sub_query;//0时不是子查询，1是子查询
+  int left_is_sub_query;//0时不是子查询，1/2/101是子查询
   Value left_value;    // left-hand side value if left_is_attr = FALSE
   RelAttr left_attr;   // left-hand side attribute
   CompOp comp;         // comparison operator
@@ -240,7 +240,7 @@ void value_destroy(Value *value);
 void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
     int right_is_attr, RelAttr *right_attr, Value *right_value);
 void condition_init_(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
-    int right_is_attr, RelAttr *right_attr, Value *right_value, int right_is_sub);
+    int right_is_attr, RelAttr *right_attr, Value *right_value, int left_is_sub, int right_is_sub);
 void condition_destroy(Condition *condition);
 
 void attr_info_init(AttrInfo *attr_info, const char *name, AttrType type, size_t length, int nullable);

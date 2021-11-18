@@ -35,6 +35,11 @@ typedef struct ParserContext {
   CompOp sub_sub_comp;
   AggregationOp sub_sub_aggop;
 
+  size_t sub2_condition_length;
+  Condition sub2_conditions[MAX_NUM];
+  CompOp sub2_comp;
+  AggregationOp sub2_aggop;
+
 	char id[MAX_NUM];
 } ParserContext;
 
@@ -75,6 +80,7 @@ void yyerror(yyscan_t scanner, const char *str)
   context->ssql->sstr.insertion.value_num = 0;
   context->sub_condition_length = 0;
   context->sub_sub_condition_length = 0;
+  context->sub2_condition_length = 0;
   printf("parse sql failed. error=%s", str);
 }
 
@@ -507,11 +513,41 @@ sub_select:
 
 			selects_append_conditions(&CONTEXT->ssql->sstr.selection[1], CONTEXT->sub_conditions, CONTEXT->sub_condition_length);
 
-			CONTEXT->ssql->sstr.selection[0].is_sub_query_exist = 1;//"sub select";
+			CONTEXT->ssql->sstr.selection[0].is_sub_query_exist++;//"sub select";
 			// CONTEXT->ssql->sstr.selection.attr_num = CONTEXT->select_length;
 
 			//临时变量清零
 			CONTEXT->sub_condition_length = 0;
+	}
+	;
+sub2_select:
+    LBRACE SELECT sub2_select_attribute FROM ID sub2_where RBRACE
+		{
+			// CONTEXT->ssql->sstr.selection.relations[CONTEXT->from_length++]=$4;
+			selects_append_relation(&CONTEXT->ssql->sstr.selection[2], $5);
+
+			selects_append_conditions(&CONTEXT->ssql->sstr.selection[2], CONTEXT->sub2_conditions, CONTEXT->sub2_condition_length);
+
+			CONTEXT->ssql->sstr.selection[0].is_sub_query_exist++;//"sub select";
+			// CONTEXT->ssql->sstr.selection.attr_num = CONTEXT->select_length;
+
+			//临时变量清零
+			CONTEXT->sub2_condition_length = 0;
+	}
+	;
+sub_sub_select:
+    LBRACE SELECT sub_sub_select_attribute FROM ID sub_sub_where RBRACE
+		{
+			// CONTEXT->ssql->sstr.selection.relations[CONTEXT->from_length++]=$4;
+			selects_append_relation(&CONTEXT->ssql->sstr.selection[2], $5);
+
+			selects_append_conditions(&CONTEXT->ssql->sstr.selection[2], CONTEXT->sub_sub_conditions, CONTEXT->sub_sub_condition_length);
+
+			CONTEXT->ssql->sstr.selection[0].is_sub_query_exist += 100;//"sub select";
+			// CONTEXT->ssql->sstr.selection.attr_num = CONTEXT->select_length;
+
+			//临时变量清零
+			CONTEXT->sub_sub_condition_length = 0;
 	}
 	;
 order_by:
@@ -629,6 +665,100 @@ sub_select_attribute:
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection[1], &attr);
 		}
     ;
+sub2_select_attribute:
+	sub2_aggOp LBRACE STAR RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", CONTEXT->sub2_aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+	| sub2_aggOp LBRACE NUMBER RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, int_to_char_array($3), CONTEXT->sub2_aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+	| sub2_aggOp LBRACE ID RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, $3, CONTEXT->sub2_aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+	| sub2_aggOp LBRACE ID DOT ID RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, $3, $5, CONTEXT->sub2_aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+	| sub2_aggOp LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+	| sub2_aggOp LBRACE RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+    | STAR {  
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, "*");
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+    | ID {
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, $1);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+  	| ID DOT ID {
+			RelAttr attr;
+			relation_attr_init(&attr, $1, $3);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+    ;
+sub_sub_select_attribute:
+	sub_sub_aggOp LBRACE STAR RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", CONTEXT->sub_sub_aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+	| sub_sub_aggOp LBRACE NUMBER RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, int_to_char_array($3), CONTEXT->sub_sub_aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+	| sub_sub_aggOp LBRACE ID RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, $3, CONTEXT->sub_sub_aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+	| sub_sub_aggOp LBRACE ID DOT ID RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, $3, $5, CONTEXT->sub_sub_aggop);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+	| sub_sub_aggOp LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+	| sub_sub_aggOp LBRACE RBRACE {
+			RelAttr attr;
+			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+    | STAR {  
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, "*");
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+    | ID {
+			RelAttr attr;
+			relation_attr_init(&attr, NULL, $1);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+  	| ID DOT ID {
+			RelAttr attr;
+			relation_attr_init(&attr, $1, $3);
+			selects_append_attribute(&CONTEXT->ssql->sstr.selection[2], &attr);
+		}
+    ;
 select_attr:
 	select_attribute attr_list {
 
@@ -736,7 +866,7 @@ inner_join_on:
 	;
 condition_list:
     /* empty */
-    | AND condition condition_list {
+    | AND bcondition condition_list {
 				// CONTEXT->conditions[CONTEXT->condition_length++]=*$2;
 			}
     ;
@@ -891,7 +1021,7 @@ condition:
 			relation_attr_init(&left_attr, $1, $3);
 
 			Condition condition;
-			condition_init_(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, NULL, 1);
+			condition_init_(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, NULL, 0, 1);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 			// $$=( Condition *)malloc(sizeof( Condition));
 			// $$->left_is_attr = 1;		//属性
@@ -908,7 +1038,7 @@ condition:
 			relation_attr_init(&left_attr, NULL, $1);
 
 			Condition condition;
-			condition_init_(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, NULL, 1);
+			condition_init_(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, NULL, 0, 1);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 			// $$=( Condition *)malloc(sizeof( Condition));
 			// $$->left_is_attr = 1;
@@ -926,7 +1056,7 @@ condition:
 			relation_attr_init(&left_attr, $3, $5);
 
 			Condition condition;
-			condition_init_(&condition, Exchange_CompOp(CONTEXT->comp), 1, &left_attr, NULL, 0, NULL, NULL, 1);
+			condition_init_(&condition, Exchange_CompOp(CONTEXT->comp), 1, &left_attr, NULL, 0, NULL, NULL, 0, 1);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 			// $$=( Condition *)malloc(sizeof( Condition));
 			// $$->left_is_attr = 1;		//属性
@@ -943,7 +1073,239 @@ condition:
 			relation_attr_init(&left_attr, NULL, $3);
 
 			Condition condition;
-			condition_init_(&condition, Exchange_CompOp(CONTEXT->comp), 1, &left_attr, NULL, 0, NULL, NULL, 1);
+			condition_init_(&condition, Exchange_CompOp(CONTEXT->comp), 1, &left_attr, NULL, 0, NULL, NULL, 0, 1);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=$1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 1;
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=$3;
+
+		}
+	|sub_select comOp sub2_select
+		{
+
+			Condition condition;
+			condition_init_(&condition, CONTEXT->comp, 0, NULL, NULL, 0, NULL, NULL, 1, 1);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=$1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 1;
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=$3;
+
+		}
+    ;
+bcondition:
+    ID comOp value 
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+
+			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+			// $$ = ( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name = NULL;
+			// $$->left_attr.attribute_name= $1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 0;
+			// $$->right_attr.relation_name = NULL;
+			// $$->right_attr.attribute_name = NULL;
+			// $$->right_value = *$3;
+
+		}
+		|value comOp value 
+		{
+			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 2];
+			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, NULL, right_value);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+			// $$ = ( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 0;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=NULL;
+			// $$->left_value = *$1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 0;
+			// $$->right_attr.relation_name = NULL;
+			// $$->right_attr.attribute_name = NULL;
+			// $$->right_value = *$3;
+
+		}
+		|ID comOp ID 
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, NULL, $3);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=$1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 1;
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=$3;
+
+		}
+    |value comOp ID
+		{
+			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, NULL, $3);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 1, &right_attr, NULL);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 0;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=NULL;
+			// $$->left_value = *$1;
+			// $$->comp=CONTEXT->comp;
+			
+			// $$->right_is_attr = 1;
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=$3;
+		
+		}
+    |ID DOT ID comOp value
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $1, $3);
+			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name=$1;
+			// $$->left_attr.attribute_name=$3;
+			// $$->comp=CONTEXT->comp;
+			// $$->right_is_attr = 0;   //属性值
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=NULL;
+			// $$->right_value =*$5;			
+							
+    }
+    |value comOp ID DOT ID
+		{
+			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, $3, $5);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 1, &right_attr, NULL);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 0;//属性值
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=NULL;
+			// $$->left_value = *$1;
+			// $$->comp =CONTEXT->comp;
+			// $$->right_is_attr = 1;//属性
+			// $$->right_attr.relation_name = $3;
+			// $$->right_attr.attribute_name = $5;
+									
+    }
+    |ID DOT ID comOp ID DOT ID
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $1, $3);
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, $5, $7);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;		//属性
+			// $$->left_attr.relation_name=$1;
+			// $$->left_attr.attribute_name=$3;
+			// $$->comp =CONTEXT->comp;
+			// $$->right_is_attr = 1;		//属性
+			// $$->right_attr.relation_name=$5;
+			// $$->right_attr.attribute_name=$7;
+    }
+    |ID DOT ID comOp sub2_select
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $1, $3);
+
+			Condition condition;
+			condition_init_(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, NULL, 0, 1);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;		//属性
+			// $$->left_attr.relation_name=$1;
+			// $$->left_attr.attribute_name=$3;
+			// $$->comp =CONTEXT->comp;
+			// $$->right_is_attr = 1;		//属性
+			// $$->right_attr.relation_name=$5;
+			// $$->right_attr.attribute_name=$7;
+    }
+	|ID comOp sub2_select
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+
+			Condition condition;
+			condition_init_(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, NULL, 0, 1);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=$1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 1;
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=$3;
+
+		}
+    |sub2_select comOp ID DOT ID
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $3, $5);
+
+			Condition condition;
+			condition_init_(&condition, Exchange_CompOp(CONTEXT->comp), 1, &left_attr, NULL, 0, NULL, NULL, 0, 1);
+			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;		//属性
+			// $$->left_attr.relation_name=$1;
+			// $$->left_attr.attribute_name=$3;
+			// $$->comp =CONTEXT->comp;
+			// $$->right_is_attr = 1;		//属性
+			// $$->right_attr.relation_name=$5;
+			// $$->right_attr.attribute_name=$7;
+    }
+	|sub2_select comOp ID
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $3);
+
+			Condition condition;
+			condition_init_(&condition, Exchange_CompOp(CONTEXT->comp), 1, &left_attr, NULL, 0, NULL, NULL, 0, 1);
 			CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 			// $$=( Condition *)malloc(sizeof( Condition));
 			// $$->left_is_attr = 1;
@@ -1113,41 +1475,392 @@ sub_condition:
 			// $$->right_attr.relation_name=$5;
 			// $$->right_attr.attribute_name=$7;
     }
-    // |ID DOT ID sub_comOp sub_select
-	// 	{
-	// 		RelAttr left_attr;
-	// 		relation_attr_init(&left_attr, $1, $3);
+    |ID DOT ID sub_comOp sub_sub_select
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $1, $3);
 
-	// 		Condition condition;
-	// 		condition_init(&condition, CONTEXT->sub_comp, 1, &left_attr, NULL, 0, NULL, NULL, 1);
-	// 		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
-	// 		// $$=( Condition *)malloc(sizeof( Condition));
-	// 		// $$->left_is_attr = 1;		//属性
-	// 		// $$->left_attr.relation_name=$1;
-	// 		// $$->left_attr.attribute_name=$3;
-	// 		// $$->comp =CONTEXT->comp;
-	// 		// $$->right_is_attr = 1;		//属性
-	// 		// $$->right_attr.relation_name=$5;
-	// 		// $$->right_attr.attribute_name=$7;
-    // }
-	// |ID sub_comOp sub_select
-	// 	{
-	// 		RelAttr left_attr;
-	// 		relation_attr_init(&left_attr, NULL, $1);
+			Condition condition;
+			condition_init_(&condition, CONTEXT->sub_comp, 1, &left_attr, NULL, 0, NULL, NULL, 0, 1);
+			CONTEXT->sub_conditions[CONTEXT->sub_condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;		//属性
+			// $$->left_attr.relation_name=$1;
+			// $$->left_attr.attribute_name=$3;
+			// $$->comp =CONTEXT->comp;
+			// $$->right_is_attr = 1;		//属性
+			// $$->right_attr.relation_name=$5;
+			// $$->right_attr.attribute_name=$7;
+    }
+	|ID sub_comOp sub_sub_select
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
 
-	// 		Condition condition;
-	// 		condition_init(&condition, CONTEXT->sub_comp, 1, &left_attr, NULL, 0, NULL, NULL, 1);
-	// 		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
-	// 		// $$=( Condition *)malloc(sizeof( Condition));
-	// 		// $$->left_is_attr = 1;
-	// 		// $$->left_attr.relation_name=NULL;
-	// 		// $$->left_attr.attribute_name=$1;
-	// 		// $$->comp = CONTEXT->comp;
-	// 		// $$->right_is_attr = 1;
-	// 		// $$->right_attr.relation_name=NULL;
-	// 		// $$->right_attr.attribute_name=$3;
+			Condition condition;
+			condition_init_(&condition, CONTEXT->sub_comp, 1, &left_attr, NULL, 0, NULL, NULL, 0, 1);
+			CONTEXT->sub_conditions[CONTEXT->sub_condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=$1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 1;
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=$3;
 
-	// 	}
+		}
+    |sub_sub_select sub_comOp ID DOT ID
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $3, $5);
+
+			Condition condition;
+			condition_init_(&condition, Exchange_CompOp(CONTEXT->sub_comp), 1, &left_attr, NULL, 0, NULL, NULL, 0, 1);
+			CONTEXT->sub_conditions[CONTEXT->sub_condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;		//属性
+			// $$->left_attr.relation_name=$1;
+			// $$->left_attr.attribute_name=$3;
+			// $$->comp =CONTEXT->comp;
+			// $$->right_is_attr = 1;		//属性
+			// $$->right_attr.relation_name=$5;
+			// $$->right_attr.attribute_name=$7;
+    }
+	|sub_sub_select sub_comOp ID
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $3);
+
+			Condition condition;
+			condition_init_(&condition, Exchange_CompOp(CONTEXT->sub_comp), 1, &left_attr, NULL, 0, NULL, NULL, 0, 1);
+			CONTEXT->sub_conditions[CONTEXT->sub_condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=$1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 1;
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=$3;
+
+		}
+    ;
+sub2_where:
+    /* empty */ 
+    | WHERE sub2_condition sub2_condition_list {	
+				// CONTEXT->conditions[CONTEXT->condition_length++]=*$2;
+			}
+    ;
+sub2_condition_list:
+    /* empty */
+    | AND sub2_condition sub2_condition_list {
+				// CONTEXT->conditions[CONTEXT->condition_length++]=*$2;
+			}
+    ;
+sub2_condition:
+    ID sub2_comOp value 
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+
+			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub2_comp, 1, &left_attr, NULL, 0, NULL, right_value);
+			CONTEXT->sub2_conditions[CONTEXT->sub2_condition_length++] = condition;
+			// $$ = ( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name = NULL;
+			// $$->left_attr.attribute_name= $1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 0;
+			// $$->right_attr.relation_name = NULL;
+			// $$->right_attr.attribute_name = NULL;
+			// $$->right_value = *$3;
+
+		}
+		|value sub2_comOp value 
+		{
+			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 2];
+			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub2_comp, 0, NULL, left_value, 0, NULL, right_value);
+			CONTEXT->sub2_conditions[CONTEXT->sub2_condition_length++] = condition;
+			// $$ = ( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 0;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=NULL;
+			// $$->left_value = *$1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 0;
+			// $$->right_attr.relation_name = NULL;
+			// $$->right_attr.attribute_name = NULL;
+			// $$->right_value = *$3;
+
+		}
+		|ID sub2_comOp ID 
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, NULL, $3);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub2_comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
+			CONTEXT->sub2_conditions[CONTEXT->sub2_condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=$1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 1;
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=$3;
+
+		}
+    |value sub2_comOp ID
+		{
+			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, NULL, $3);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub2_comp, 0, NULL, left_value, 1, &right_attr, NULL);
+			CONTEXT->sub2_conditions[CONTEXT->sub2_condition_length++] = condition;
+
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 0;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=NULL;
+			// $$->left_value = *$1;
+			// $$->comp=CONTEXT->comp;
+			
+			// $$->right_is_attr = 1;
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=$3;
+		
+		}
+    |ID DOT ID sub2_comOp value
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $1, $3);
+			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub2_comp, 1, &left_attr, NULL, 0, NULL, right_value);
+			CONTEXT->sub2_conditions[CONTEXT->sub2_condition_length++] = condition;
+
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name=$1;
+			// $$->left_attr.attribute_name=$3;
+			// $$->comp=CONTEXT->comp;
+			// $$->right_is_attr = 0;   //属性值
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=NULL;
+			// $$->right_value =*$5;			
+							
+    }
+    |value sub2_comOp ID DOT ID
+		{
+			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, $3, $5);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub2_comp, 0, NULL, left_value, 1, &right_attr, NULL);
+			CONTEXT->sub2_conditions[CONTEXT->sub2_condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 0;//属性值
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=NULL;
+			// $$->left_value = *$1;
+			// $$->comp =CONTEXT->comp;
+			// $$->right_is_attr = 1;//属性
+			// $$->right_attr.relation_name = $3;
+			// $$->right_attr.attribute_name = $5;
+									
+    }
+    |ID DOT ID sub2_comOp ID DOT ID
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $1, $3);
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, $5, $7);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub2_comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
+			CONTEXT->sub2_conditions[CONTEXT->sub2_condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;		//属性
+			// $$->left_attr.relation_name=$1;
+			// $$->left_attr.attribute_name=$3;
+			// $$->comp =CONTEXT->comp;
+			// $$->right_is_attr = 1;		//属性
+			// $$->right_attr.relation_name=$5;
+			// $$->right_attr.attribute_name=$7;
+    }
+    ;
+sub_sub_where:
+    /* empty */ 
+    | WHERE sub_sub_condition sub_sub_condition_list {	
+				// CONTEXT->conditions[CONTEXT->condition_length++]=*$2;
+			}
+    ;
+sub_sub_condition_list:
+    /* empty */
+    | AND sub_sub_condition sub_sub_condition_list {
+				// CONTEXT->conditions[CONTEXT->condition_length++]=*$2;
+			}
+    ;
+sub_sub_condition:
+    ID sub_sub_comOp value 
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+
+			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub_sub_comp, 1, &left_attr, NULL, 0, NULL, right_value);
+			CONTEXT->sub_sub_conditions[CONTEXT->sub_sub_condition_length++] = condition;
+			// $$ = ( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name = NULL;
+			// $$->left_attr.attribute_name= $1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 0;
+			// $$->right_attr.relation_name = NULL;
+			// $$->right_attr.attribute_name = NULL;
+			// $$->right_value = *$3;
+
+		}
+		|value sub_sub_comOp value 
+		{
+			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 2];
+			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub_sub_comp, 0, NULL, left_value, 0, NULL, right_value);
+			CONTEXT->sub_sub_conditions[CONTEXT->sub_sub_condition_length++] = condition;
+			// $$ = ( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 0;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=NULL;
+			// $$->left_value = *$1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 0;
+			// $$->right_attr.relation_name = NULL;
+			// $$->right_attr.attribute_name = NULL;
+			// $$->right_value = *$3;
+
+		}
+		|ID sub_sub_comOp ID 
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, NULL, $1);
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, NULL, $3);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub_sub_comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
+			CONTEXT->sub_sub_conditions[CONTEXT->sub_sub_condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=$1;
+			// $$->comp = CONTEXT->comp;
+			// $$->right_is_attr = 1;
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=$3;
+
+		}
+    |value sub_sub_comOp ID
+		{
+			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, NULL, $3);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub_sub_comp, 0, NULL, left_value, 1, &right_attr, NULL);
+			CONTEXT->sub_sub_conditions[CONTEXT->sub_sub_condition_length++] = condition;
+
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 0;
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=NULL;
+			// $$->left_value = *$1;
+			// $$->comp=CONTEXT->comp;
+			
+			// $$->right_is_attr = 1;
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=$3;
+		
+		}
+    |ID DOT ID sub_sub_comOp value
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $1, $3);
+			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub_sub_comp, 1, &left_attr, NULL, 0, NULL, right_value);
+			CONTEXT->sub_sub_conditions[CONTEXT->sub_sub_condition_length++] = condition;
+
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;
+			// $$->left_attr.relation_name=$1;
+			// $$->left_attr.attribute_name=$3;
+			// $$->comp=CONTEXT->comp;
+			// $$->right_is_attr = 0;   //属性值
+			// $$->right_attr.relation_name=NULL;
+			// $$->right_attr.attribute_name=NULL;
+			// $$->right_value =*$5;			
+							
+    }
+    |value sub_sub_comOp ID DOT ID
+		{
+			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
+
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, $3, $5);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub_sub_comp, 0, NULL, left_value, 1, &right_attr, NULL);
+			CONTEXT->sub_sub_conditions[CONTEXT->sub_sub_condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 0;//属性值
+			// $$->left_attr.relation_name=NULL;
+			// $$->left_attr.attribute_name=NULL;
+			// $$->left_value = *$1;
+			// $$->comp =CONTEXT->comp;
+			// $$->right_is_attr = 1;//属性
+			// $$->right_attr.relation_name = $3;
+			// $$->right_attr.attribute_name = $5;
+									
+    }
+    |ID DOT ID sub_sub_comOp ID DOT ID
+		{
+			RelAttr left_attr;
+			relation_attr_init(&left_attr, $1, $3);
+			RelAttr right_attr;
+			relation_attr_init(&right_attr, $5, $7);
+
+			Condition condition;
+			condition_init(&condition, CONTEXT->sub_sub_comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
+			CONTEXT->sub_sub_conditions[CONTEXT->sub_sub_condition_length++] = condition;
+			// $$=( Condition *)malloc(sizeof( Condition));
+			// $$->left_is_attr = 1;		//属性
+			// $$->left_attr.relation_name=$1;
+			// $$->left_attr.attribute_name=$3;
+			// $$->comp =CONTEXT->comp;
+			// $$->right_is_attr = 1;		//属性
+			// $$->right_attr.relation_name=$5;
+			// $$->right_attr.attribute_name=$7;
+    }
     ;
 
 comOp:
@@ -1174,6 +1887,30 @@ sub_comOp:
 	| IS NOT { CONTEXT->sub_comp = COMP_IS_NOT; }
 	| IS { CONTEXT->sub_comp = COMP_IS; }
     ;
+sub2_comOp:
+	  NOT IN { CONTEXT->sub2_comp = COMP_NOT_IN; }
+	| IN { CONTEXT->sub2_comp = COMP_IN; }
+  	| EQ { CONTEXT->sub2_comp = EQUAL_TO; }
+    | LT { CONTEXT->sub2_comp = LESS_THAN; }
+    | GT { CONTEXT->sub2_comp = GREAT_THAN; }
+    | LE { CONTEXT->sub2_comp = LESS_EQUAL; }
+    | GE { CONTEXT->sub2_comp = GREAT_EQUAL; }
+    | NE { CONTEXT->sub2_comp = NOT_EQUAL; }
+	| IS NOT { CONTEXT->sub2_comp = COMP_IS_NOT; }
+	| IS { CONTEXT->sub2_comp = COMP_IS; }
+    ;
+sub_sub_comOp:
+	  NOT IN { CONTEXT->sub_sub_comp = COMP_NOT_IN; }
+	| IN { CONTEXT->sub_sub_comp = COMP_IN; }
+  	| EQ { CONTEXT->sub_sub_comp = EQUAL_TO; }
+    | LT { CONTEXT->sub_sub_comp = LESS_THAN; }
+    | GT { CONTEXT->sub_sub_comp = GREAT_THAN; }
+    | LE { CONTEXT->sub_sub_comp = LESS_EQUAL; }
+    | GE { CONTEXT->sub_sub_comp = GREAT_EQUAL; }
+    | NE { CONTEXT->sub_sub_comp = NOT_EQUAL; }
+	| IS NOT { CONTEXT->sub_sub_comp = COMP_IS_NOT; }
+	| IS { CONTEXT->sub_sub_comp = COMP_IS; }
+    ;
 
 aggOp:
   	  AGG_COUNT { CONTEXT->aggop = COUNT; }
@@ -1186,6 +1923,17 @@ sub_aggOp:
   	| AGG_MAX { CONTEXT->sub_aggop = MAX; }
   	| AGG_MIN { CONTEXT->sub_aggop = MIN; }
   	| AGG_AVG { CONTEXT->sub_aggop = AVG; }
+sub2_aggOp:
+  	  AGG_COUNT { CONTEXT->sub2_aggop = COUNT; }
+  	| AGG_MAX { CONTEXT->sub2_aggop = MAX; }
+  	| AGG_MIN { CONTEXT->sub2_aggop = MIN; }
+  	| AGG_AVG { CONTEXT->sub2_aggop = AVG; }
+    ;
+sub_sub_aggOp:
+  	  AGG_COUNT { CONTEXT->sub_sub_aggop = COUNT; }
+  	| AGG_MAX { CONTEXT->sub_sub_aggop = MAX; }
+  	| AGG_MIN { CONTEXT->sub_sub_aggop = MIN; }
+  	| AGG_AVG { CONTEXT->sub_sub_aggop = AVG; }
     ;
 
 load_data:

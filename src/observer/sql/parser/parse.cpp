@@ -153,6 +153,10 @@ void condition_init(Condition *condition, CompOp comp,
   condition->left_is_attr = left_is_attr;
   if (left_is_attr) {
     condition->left_attr = *left_attr;
+  } else if (left_value == nullptr) {
+    condition->left_value.data = nullptr;
+    condition->left_value.type = UNDEFINED;
+    condition->left_value._is_null = 0;
   } else {
     condition->left_value = *left_value;
   }
@@ -167,11 +171,13 @@ void condition_init(Condition *condition, CompOp comp,
   } else {
     condition->right_value = *right_value;
   }
+  condition->left_is_sub_query = 0;
   condition->right_is_sub_query = 0;
 }
 void condition_init_(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
-    int right_is_attr, RelAttr *right_attr, Value *right_value, int right_is_sub) {
+    int right_is_attr, RelAttr *right_attr, Value *right_value, int left_is_sub, int right_is_sub) {
   condition_init(condition, comp, left_is_attr, left_attr, left_value, right_is_attr, right_attr, right_value);
+  condition->left_is_sub_query = left_is_sub;
   condition->right_is_sub_query = right_is_sub;
 }
 void condition_destroy(Condition *condition) {
