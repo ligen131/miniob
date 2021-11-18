@@ -27,9 +27,13 @@ typedef struct ParserContext {
 
   size_t sub_condition_length;
   Condition sub_conditions[MAX_NUM];
+  CompOp sub_comp;
+  AggregationOp sub_aggop;
 
   size_t sub_sub_condition_length;
   Condition sub_sub_conditions[MAX_NUM];
+  CompOp sub_sub_comp;
+  AggregationOp sub_sub_aggop;
 
 	char id[MAX_NUM];
 } ParserContext;
@@ -579,32 +583,32 @@ select_group:
 	}
   ;
 sub_select_attribute:
-	aggOp LBRACE STAR RBRACE {
+	sub_aggOp LBRACE STAR RBRACE {
 			RelAttr attr;
-			relation_attr_init_(&attr, NULL, "*", CONTEXT->aggop);
+			relation_attr_init_(&attr, NULL, "*", CONTEXT->sub_aggop);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection[1], &attr);
 		}
-	| aggOp LBRACE NUMBER RBRACE {
+	| sub_aggOp LBRACE NUMBER RBRACE {
 			RelAttr attr;
-			relation_attr_init_(&attr, NULL, int_to_char_array($3), CONTEXT->aggop);
+			relation_attr_init_(&attr, NULL, int_to_char_array($3), CONTEXT->sub_aggop);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection[1], &attr);
 		}
-	| aggOp LBRACE ID RBRACE {
+	| sub_aggOp LBRACE ID RBRACE {
 			RelAttr attr;
-			relation_attr_init_(&attr, NULL, $3, CONTEXT->aggop);
+			relation_attr_init_(&attr, NULL, $3, CONTEXT->sub_aggop);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection[1], &attr);
 		}
-	| aggOp LBRACE ID DOT ID RBRACE {
+	| sub_aggOp LBRACE ID DOT ID RBRACE {
 			RelAttr attr;
-			relation_attr_init_(&attr, $3, $5, CONTEXT->aggop);
+			relation_attr_init_(&attr, $3, $5, CONTEXT->sub_aggop);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection[1], &attr);
 		}
-	| aggOp LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE {
+	| sub_aggOp LBRACE aggr_select_attr COMMA aggr_select_attr aggr_attr_list RBRACE {
 			RelAttr attr;
 			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection[1], &attr);
 		}
-	| aggOp LBRACE RBRACE {
+	| sub_aggOp LBRACE RBRACE {
 			RelAttr attr;
 			relation_attr_init_(&attr, NULL, "*", AGG_INVALID);
 			selects_append_attribute(&CONTEXT->ssql->sstr.selection[1], &attr);
@@ -965,7 +969,7 @@ sub_condition_list:
 			}
     ;
 sub_condition:
-    ID comOp value 
+    ID sub_comOp value 
 		{
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, NULL, $1);
@@ -973,7 +977,7 @@ sub_condition:
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
+			condition_init(&condition, CONTEXT->sub_comp, 1, &left_attr, NULL, 0, NULL, right_value);
 			CONTEXT->sub_conditions[CONTEXT->sub_condition_length++] = condition;
 			// $$ = ( Condition *)malloc(sizeof( Condition));
 			// $$->left_is_attr = 1;
@@ -986,13 +990,13 @@ sub_condition:
 			// $$->right_value = *$3;
 
 		}
-		|value comOp value 
+		|value sub_comOp value 
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 2];
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 0, NULL, right_value);
+			condition_init(&condition, CONTEXT->sub_comp, 0, NULL, left_value, 0, NULL, right_value);
 			CONTEXT->sub_conditions[CONTEXT->sub_condition_length++] = condition;
 			// $$ = ( Condition *)malloc(sizeof( Condition));
 			// $$->left_is_attr = 0;
@@ -1006,7 +1010,7 @@ sub_condition:
 			// $$->right_value = *$3;
 
 		}
-		|ID comOp ID 
+		|ID sub_comOp ID 
 		{
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, NULL, $1);
@@ -1014,7 +1018,7 @@ sub_condition:
 			relation_attr_init(&right_attr, NULL, $3);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
+			condition_init(&condition, CONTEXT->sub_comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
 			CONTEXT->sub_conditions[CONTEXT->sub_condition_length++] = condition;
 			// $$=( Condition *)malloc(sizeof( Condition));
 			// $$->left_is_attr = 1;
@@ -1026,14 +1030,14 @@ sub_condition:
 			// $$->right_attr.attribute_name=$3;
 
 		}
-    |value comOp ID
+    |value sub_comOp ID
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
 			RelAttr right_attr;
 			relation_attr_init(&right_attr, NULL, $3);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 1, &right_attr, NULL);
+			condition_init(&condition, CONTEXT->sub_comp, 0, NULL, left_value, 1, &right_attr, NULL);
 			CONTEXT->sub_conditions[CONTEXT->sub_condition_length++] = condition;
 
 			// $$=( Condition *)malloc(sizeof( Condition));
@@ -1048,14 +1052,14 @@ sub_condition:
 			// $$->right_attr.attribute_name=$3;
 		
 		}
-    |ID DOT ID comOp value
+    |ID DOT ID sub_comOp value
 		{
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, $1, $3);
 			Value *right_value = &CONTEXT->values[CONTEXT->value_length - 1];
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, right_value);
+			condition_init(&condition, CONTEXT->sub_comp, 1, &left_attr, NULL, 0, NULL, right_value);
 			CONTEXT->sub_conditions[CONTEXT->sub_condition_length++] = condition;
 
 			// $$=( Condition *)malloc(sizeof( Condition));
@@ -1069,7 +1073,7 @@ sub_condition:
 			// $$->right_value =*$5;			
 							
     }
-    |value comOp ID DOT ID
+    |value sub_comOp ID DOT ID
 		{
 			Value *left_value = &CONTEXT->values[CONTEXT->value_length - 1];
 
@@ -1077,7 +1081,7 @@ sub_condition:
 			relation_attr_init(&right_attr, $3, $5);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 0, NULL, left_value, 1, &right_attr, NULL);
+			condition_init(&condition, CONTEXT->sub_comp, 0, NULL, left_value, 1, &right_attr, NULL);
 			CONTEXT->sub_conditions[CONTEXT->sub_condition_length++] = condition;
 			// $$=( Condition *)malloc(sizeof( Condition));
 			// $$->left_is_attr = 0;//属性值
@@ -1090,7 +1094,7 @@ sub_condition:
 			// $$->right_attr.attribute_name = $5;
 									
     }
-    |ID DOT ID comOp ID DOT ID
+    |ID DOT ID sub_comOp ID DOT ID
 		{
 			RelAttr left_attr;
 			relation_attr_init(&left_attr, $1, $3);
@@ -1098,7 +1102,7 @@ sub_condition:
 			relation_attr_init(&right_attr, $5, $7);
 
 			Condition condition;
-			condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
+			condition_init(&condition, CONTEXT->sub_comp, 1, &left_attr, NULL, 1, &right_attr, NULL);
 			CONTEXT->sub_conditions[CONTEXT->sub_condition_length++] = condition;
 			// $$=( Condition *)malloc(sizeof( Condition));
 			// $$->left_is_attr = 1;		//属性
@@ -1109,13 +1113,13 @@ sub_condition:
 			// $$->right_attr.relation_name=$5;
 			// $$->right_attr.attribute_name=$7;
     }
-    // |ID DOT ID comOp sub_select
+    // |ID DOT ID sub_comOp sub_select
 	// 	{
 	// 		RelAttr left_attr;
 	// 		relation_attr_init(&left_attr, $1, $3);
 
 	// 		Condition condition;
-	// 		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, NULL, 1);
+	// 		condition_init(&condition, CONTEXT->sub_comp, 1, &left_attr, NULL, 0, NULL, NULL, 1);
 	// 		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 	// 		// $$=( Condition *)malloc(sizeof( Condition));
 	// 		// $$->left_is_attr = 1;		//属性
@@ -1126,13 +1130,13 @@ sub_condition:
 	// 		// $$->right_attr.relation_name=$5;
 	// 		// $$->right_attr.attribute_name=$7;
     // }
-	// |ID comOp sub_select
+	// |ID sub_comOp sub_select
 	// 	{
 	// 		RelAttr left_attr;
 	// 		relation_attr_init(&left_attr, NULL, $1);
 
 	// 		Condition condition;
-	// 		condition_init(&condition, CONTEXT->comp, 1, &left_attr, NULL, 0, NULL, NULL, 1);
+	// 		condition_init(&condition, CONTEXT->sub_comp, 1, &left_attr, NULL, 0, NULL, NULL, 1);
 	// 		CONTEXT->conditions[CONTEXT->condition_length++] = condition;
 	// 		// $$=( Condition *)malloc(sizeof( Condition));
 	// 		// $$->left_is_attr = 1;
@@ -1147,7 +1151,9 @@ sub_condition:
     ;
 
 comOp:
-  	  EQ { CONTEXT->comp = EQUAL_TO; }
+	  NOT IN { CONTEXT->comp = COMP_NOT_IN; }
+	| IN { CONTEXT->comp = COMP_IN; }
+  	| EQ { CONTEXT->comp = EQUAL_TO; }
     | LT { CONTEXT->comp = LESS_THAN; }
     | GT { CONTEXT->comp = GREAT_THAN; }
     | LE { CONTEXT->comp = LESS_EQUAL; }
@@ -1155,8 +1161,18 @@ comOp:
     | NE { CONTEXT->comp = NOT_EQUAL; }
 	| IS NOT { CONTEXT->comp = COMP_IS_NOT; }
 	| IS { CONTEXT->comp = COMP_IS; }
-	| IN { CONTEXT->comp = COMP_IN; }
-	| NOT IN { CONTEXT->comp = COMP_NOT_IN; }
+    ;
+sub_comOp:
+	  NOT IN { CONTEXT->sub_comp = COMP_NOT_IN; }
+	| IN { CONTEXT->sub_comp = COMP_IN; }
+  	| EQ { CONTEXT->sub_comp = EQUAL_TO; }
+    | LT { CONTEXT->sub_comp = LESS_THAN; }
+    | GT { CONTEXT->sub_comp = GREAT_THAN; }
+    | LE { CONTEXT->sub_comp = LESS_EQUAL; }
+    | GE { CONTEXT->sub_comp = GREAT_EQUAL; }
+    | NE { CONTEXT->sub_comp = NOT_EQUAL; }
+	| IS NOT { CONTEXT->sub_comp = COMP_IS_NOT; }
+	| IS { CONTEXT->sub_comp = COMP_IS; }
     ;
 
 aggOp:
@@ -1164,6 +1180,12 @@ aggOp:
   	| AGG_MAX { CONTEXT->aggop = MAX; }
   	| AGG_MIN { CONTEXT->aggop = MIN; }
   	| AGG_AVG { CONTEXT->aggop = AVG; }
+    ;
+sub_aggOp:
+  	  AGG_COUNT { CONTEXT->sub_aggop = COUNT; }
+  	| AGG_MAX { CONTEXT->sub_aggop = MAX; }
+  	| AGG_MIN { CONTEXT->sub_aggop = MIN; }
+  	| AGG_AVG { CONTEXT->sub_aggop = AVG; }
     ;
 
 load_data:

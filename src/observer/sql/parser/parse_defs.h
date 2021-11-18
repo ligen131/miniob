@@ -65,8 +65,8 @@ typedef enum {
   GREAT_THAN,   //">"     5
   COMP_IS_NOT,
   COMP_IS,
-  COMP_IN,
   COMP_NOT_IN,
+  COMP_IN,
   NO_OP
 } CompOp;
 
