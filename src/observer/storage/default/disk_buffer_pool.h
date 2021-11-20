@@ -112,14 +112,15 @@ public:
     if (now_size < size) {
       if (head != -1) pre[head] = now_size;
       pre[now_size] = -1;
+      pre[head] = now_size;
       nxt[now_size] = head;
       head = now_size;
       frame[head] = *(new Frame);
       allocated[head] = true;
       ++now_size;
-      return &frame[head];
+      return frame + head;
     }
-    // delete &frame[tail];
+    // delete (frame + tail);
     // printf("alloc %d %d\n",head,tail);
     mp[Hash_F(frame[tail].file_desc, frame[tail].page.page_num)] = 0;
     pre[head] = tail;
@@ -129,7 +130,7 @@ public:
     nxt[tail] = -1;
     pre[head] = -1;
     frame[head] = *(new Frame);
-    return &frame[head]; // TODO for test
+    return frame + head; // TODO for test -> test passed
   }
 
   Frame *get(int file_desc, PageNum page_num) {
@@ -141,7 +142,7 @@ public:
           // printf("get %d %d %d %d %d\n",file_desc,page_num,now,head,tail);
           mp[Hash_F(file_desc, page_num)] = now + 1; // 因为没有 put 操作，故在第一次 get 时 put 一下。
           if (now == head) {
-            return &frame[now];
+            return (frame + now);
           }
           if (now == tail) tail = pre[tail];
           if (nxt[now] != -1) pre[nxt[now]] = pre[now];
@@ -150,13 +151,13 @@ public:
           nxt[now] = head;
           pre[now] = -1;
           head = now;
-          return &frame[now];
+          return (frame + now);
         }
       }
     } else {
       int now = _find - 1;
       if (now == head) {
-        return &frame[now];
+        return (frame + now);
       }
       if (now == tail) tail = pre[tail];
       if (nxt[now] != -1) pre[nxt[now]] = pre[now];
@@ -165,9 +166,9 @@ public:
       nxt[now] = head;
       pre[now] = -1;
       head = now;
-      return &frame[now];
+      return (frame + now);
     }
-    return nullptr; // TODO for test
+    return nullptr; // TODO for test -> test passed
   }
 
   Frame *getFrame() { return frame; }
@@ -279,6 +280,14 @@ protected:
 private:
   BPManager bp_manager_;
   BPFileHandle *open_list_[MAX_OPEN_FILE] = {nullptr};
+  std::unordered_map<std::string, int> open_list_name_map; // 哈希表，int 存的是在链表中的位置。由于使用数组模拟，故存的就是 数组中的下标 + 1
+  int head = 0;
+  int tail = 1;
+  int nxt[MAX_OPEN_FILE + 1];
+  int pre[MAX_OPEN_FILE + 1];
+  int now_size = 0;
+  // 吐槽一下。。。题目说的不清不楚。。。还以为在上面的BPManager实现alloc()和get()两个函数。。。
+  // 所以上面的BPManager到底有什么用。。。两个函数压根就没被调用到。。。
 };
 
 DiskBufferPool *theGlobalDiskBufferPool();

@@ -83,22 +83,74 @@ RC DiskBufferPool::open_file(const char *file_name, int *file_id)
 {
   int fd, i;
   // This part isn't gentle, the better method is using LRU queue.
-  for (i = 0; i < MAX_OPEN_FILE; i++) {
-    if (open_list_[i]) {
-      if (!strcmp(open_list_[i]->file_name, file_name)) {
-        *file_id = i;
-        LOG_INFO("%s has already been opened.", file_name);
-        return RC::SUCCESS;
-      }
+  // 吐槽一下。。。题目说的不清不楚。。。还以为在BPManager实现alloc()和get()两个函数。。。
+  // 所以BPManager到底有什么用。。。两个函数压根就没被调用到。。。
+
+  // 以下 LRU O1 实现 使用双向链表 + 哈希表
+  // 此处直接使用 open_list_ 这个原来的数组来模拟双向链表。
+  // 哈希表使用 unordered_map 模板。即 open_list_name_map
+  // 注释掉的代码下面即该部分的正式实现。
+
+
+  // for (i = 0; i < MAX_OPEN_FILE; i++) {
+  //   if (open_list_[i]) {
+  //     if (!strcmp(open_list_[i]->file_name, file_name)) {
+  //       *file_id = i;
+  //       LOG_INFO("%s has already been opened.", file_name);
+  //       return RC::SUCCESS;
+  //     }
+  //   }
+  // }
+  i = open_list_name_map[std::string(file_name)];
+  if (0 != i) {
+    *file_id = i - 1; // 为什么要 - 1？见哈希表定义处注释。
+    // 更改链表表头
+    if (i != head) {
+      if (i == tail) tail = pre[tail];
+      if (nxt[i] != 0) pre[nxt[i]] = pre[i];
+      if (pre[i] != 0) nxt[pre[i]] = nxt[i];
+      pre[head] = i;
+      nxt[i] = head;
+      pre[i] = 0;
+      head = i;
     }
+
+    LOG_INFO("%s has already been opened.", file_name);
+    return RC::SUCCESS;
   }
+
   i = 0;
-  while (i < MAX_OPEN_FILE && open_list_[i++])
-    ;
-  if (i >= MAX_OPEN_FILE && open_list_[i - 1]) {
-    LOG_ERROR("Failed to open file %s, because too much files has been opened.", file_name);
-    return RC::BUFFERPOOL_OPEN_TOO_MANY_FILES;
+  // while (i < MAX_OPEN_FILE && open_list_[i++])
+  //   ;
+  // if (i >= MAX_OPEN_FILE && open_list_[i - 1]) {
+  //   LOG_ERROR("Failed to open file %s, because too much files has been opened.", file_name);
+  //   return RC::BUFFERPOOL_OPEN_TOO_MANY_FILES;
+  // }
+  if (now_size >= MAX_OPEN_FILE && open_list_[now_size - 1]) {
+    // 根据 lru 要把链表尾部的文件 close 掉
+    RC rc = close_file(tail - 1);
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to close file when open file %s execute LRU queue.", file_name);
+      return rc;
+    }
+    open_list_name_map[std::string(open_list_[tail - 1]->file_name)] = 0;
+    open_list_[tail - 1] = nullptr;
+    i = tail;
+    pre[head] = tail;
+    nxt[tail] = head;
+    head = tail;
+    tail = pre[tail];
+    nxt[tail] = 0;
+    pre[head] = 0;
+  } else {
+    ++now_size;
+    i = now_size;
+    pre[now_size] = 0;
+    pre[head] = now_size;
+    nxt[now_size] = head;
+    head = now_size;
   }
+  open_list_name_map[std::string(file_name)] = head;
 
   if ((fd = open(file_name, O_RDWR)) < 0) {
     LOG_ERROR("Failed to open file %s, because %s.", file_name, strerror(errno));
