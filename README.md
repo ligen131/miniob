@@ -1,6 +1,10 @@
 # 2021 OceanBase 数据库大赛
 
-该仓库由偏远小渔村传统弱校队维护，维护人员由 @ligen131 @Bunnycxk @QuartZ-Z 组成。
+**请注意：本仓库仅供学习参考使用，由于 2022 OceanBase 数据库大赛正在进行，与去年的题目有所重叠，提醒查看过本仓库的各位选手切勿妄图抄袭代码，违者将受到蚂蚁集团大赛委员会和法律的制裁。本仓库受开源许可证 “木兰宽松许可证”和 GNU General Public License v3.0 保护，这意味着若您使用本仓库的代码，您必须将您的代码开源（这意味着您无法在以闭源方式提交代码的所有比赛中使用）。**
+
+**ATTENTION PLEASE: This repository is for study and reference only. Since the 2022 OceanBase Database Competition is ongoing, it overlaps with last year's problems. All contestants who have viewed this repository are reminded NOT TO COPY the code in vain. Violators will be subject to the competition committee of Ant Group and the legal sanctions. This repository is protected by the open source license Mulan Permissive License and GNU General Public License v3.0, which means that if you use the code of this repository, you must make your code open source (which means you cannot use closed source code way to submit code for use in all contests).**
+
+该仓库由偏远小渔村传统弱校队维护，维护人员由 @ligen131 @Bunnycxk @QuartZ-Z 组成，最终成绩：220 + 10 （除表达式外，其他题目均通过测试）。
 
 ## 代码提交方式
 
